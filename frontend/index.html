@@ -4,633 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>春雪食品生产销售分析报告</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #fafafa;
-            color: #1d1d1f;
-            line-height: 1.6;
-        }
-
-        /* 登录遮罩层样式 */
-        .auth-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .auth-modal {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(30px) scale(0.95); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0) scale(1); 
-            }
-        }
-
-        .auth-title {
-            text-align: center;
-            font-size: 28px;
-            font-weight: 600;
-            color: #1d1d1f;
-            margin-bottom: 8px;
-        }
-
-        .auth-subtitle {
-            text-align: center;
-            color: #86868b;
-            margin-bottom: 32px;
-            font-size: 16px;
-        }
-
-        .auth-tabs {
-            display: flex;
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 4px;
-            margin-bottom: 24px;
-        }
-
-        .auth-tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            background: none;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            color: #86868b;
-            transition: all 0.2s ease;
-        }
-
-        .auth-tab.active {
-            background: white;
-            color: #ff9500;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .auth-form {
-            display: none;
-        }
-
-        .auth-form.active {
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #1d1d1f;
-            font-weight: 500;
-            font-size: 15px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid #d1d1d6;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #ff9500;
-            box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.1);
-        }
-
-        .form-input.error {
-            border-color: #ff3b30;
-            box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
-        }
-
-        .error-message {
-            color: #ff3b30;
-            font-size: 14px;
-            margin-top: 6px;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .auth-button {
-            width: 100%;
-            padding: 16px;
-            background: #ff9500;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 8px;
-        }
-
-        .auth-button:hover {
-            background: #e6820e;
-            transform: translateY(-1px);
-        }
-
-        .auth-button:active {
-            transform: translateY(0);
-        }
-
-        .auth-button:disabled {
-            background: #d1d1d6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .invite-note {
-            background: rgba(255, 149, 0, 0.1);
-            border: 1px solid rgba(255, 149, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #b7791f;
-        }
-
-        /* 主内容区域模糊效果 */
-        .main-content {
-            transition: filter 0.3s ease;
-        }
-
-        .main-content.blurred {
-            filter: blur(8px);
-            pointer-events: none;
-            user-select: none;
-        }
-
-        /* 用户信息栏 */
-        .user-bar {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            border-radius: 12px;
-            padding: 12px 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            display: none;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-bar.show {
-            display: flex;
-        }
-
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #ff9500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .user-info {
-            color: #1d1d1f;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        .logout-btn {
-            color: #86868b;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .logout-btn:hover {
-            background: #f0f0f0;
-            color: #ff3b30;
-        }
-
-        /* 原有样式保持不变 */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #ff9500 0%, #ffb340 100%);
-            border-radius: 12px;
-            padding: 40px 30px;
-            text-align: center;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(255, 149, 0, 0.15);
-        }
-
-        .header h1 {
-            color: white;
-            font-size: 2.5em;
-            font-weight: 600;
-            margin-bottom: 12px;
-            letter-spacing: -0.5px;
-        }
-
-        .header p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.1em;
-            font-weight: 400;
-        }
-
-        .nav-container {
-            background: white;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        .nav-tabs {
-            display: flex;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .nav-tab {
-            flex: 1;
-            padding: 16px 20px;
-            text-align: center;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            color: #86868b;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .nav-tab:hover {
-            color: #ff9500;
-            background: rgba(255, 149, 0, 0.05);
-        }
-
-        .nav-tab.active {
-            color: #ff9500;
-            background: rgba(255, 149, 0, 0.08);
-        }
-
-        .nav-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #ff9500;
-        }
-
-        .content-area {
-            background: white;
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            min-height: 500px;
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .section-title {
-            font-size: 28px;
-            color: #1d1d1f;
-            margin-bottom: 32px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-
-        .metric-card {
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
-            transition: all 0.2s ease;
-            border: 1px solid #e5e5e7;
-        }
-
-        .metric-card:hover {
-            background: rgba(255, 149, 0, 0.05);
-            border-color: #ff9500;
-            transform: translateY(-2px);
-        }
-
-        .metric-number {
-            font-size: 2.5em;
-            font-weight: 700;
-            color: #ff9500;
-            margin-bottom: 8px;
-            letter-spacing: -1px;
-        }
-
-        .metric-label {
-            color: #86868b;
-            font-size: 15px;
-            font-weight: 500;
-        }
-
-        .info-panel {
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 24px;
-            border-left: 4px solid #ff9500;
-        }
-
-        .info-item {
-            margin-bottom: 16px;
-            padding: 16px;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e5e5e7;
-            transition: all 0.2s ease;
-        }
-
-        .info-item:hover {
-            border-color: #ff9500;
-            box-shadow: 0 2px 8px rgba(255, 149, 0, 0.1);
-        }
-
-        .info-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .info-item strong {
-            color: #1d1d1f;
-            font-weight: 600;
-        }
-
-        .info-link {
-            color: #ff9500;
-            text-decoration: none;
-            font-weight: 500;
-            transition: opacity 0.2s ease;
-        }
-
-        .info-link:hover {
-            opacity: 0.8;
-        }
-
-        .chart-container {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            border: 1px solid #e5e5e7;
-            margin-bottom: 20px;
-        }
-
-        .chart-placeholder {
-            height: 300px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #86868b;
-            font-size: 16px;
-            border: 2px dashed #d1d1d6;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid #e5e5e7;
-        }
-
-        .data-table th {
-            background: #f9f9f9;
-            color: #1d1d1f;
-            padding: 16px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 15px;
-            border-bottom: 1px solid #e5e5e7;
-        }
-
-        .data-table td {
-            padding: 16px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 15px;
-        }
-
-        .data-table tr:hover td {
-            background-color: rgba(255, 149, 0, 0.05);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .status-normal { 
-            background: #d1f2eb; 
-            color: #0d7844; 
-        }
-        .status-warning { 
-            background: #fef9e7; 
-            color: #b7791f; 
-        }
-        .status-critical { 
-            background: #fdf2f2; 
-            color: #c53030; 
-        }
-
-        .filter-panel {
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #e5e5e7;
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-group label {
-            color: #1d1d1f;
-            font-weight: 500;
-            font-size: 15px;
-        }
-
-        .filter-group select,
-        .filter-group input {
-            padding: 10px 14px;
-            border: 1px solid #d1d1d6;
-            border-radius: 8px;
-            font-size: 15px;
-            background: white;
-            transition: border-color 0.2s ease;
-        }
-
-        .filter-group select:focus,
-        .filter-group input:focus {
-            outline: none;
-            border-color: #ff9500;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            background: #ff9500;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .btn:hover {
-            background: #e6820e;
-            transform: translateY(-1px);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .summary-highlight {
-            background: rgba(255, 149, 0, 0.1);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-            border: 1px solid rgba(255, 149, 0, 0.2);
-        }
-
-        .summary-highlight h3 {
-            color: #1d1d1f;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .alert-box {
-            background: #fef9e7;
-            border: 1px solid #f6cc00;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-
-        .alert-box h4 {
-            color: #b7791f;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .alert-box ul {
-            margin-top: 8px;
-            padding-left: 20px;
-            color: #86400e;
-        }
-
-        @media (max-width: 768px) {
-            .nav-tabs {
-                flex-direction: column;
-            }
-            
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
-            
-            .content-area {
-                padding: 20px;
-            }
-
-            .auth-modal {
-                padding: 30px 20px;
-            }
-
-            .user-bar {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin-bottom: 20px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- 登录认证遮罩层 -->
@@ -638,12 +12,12 @@
         <div class="auth-modal">
             <h2 class="auth-title">春雪食品分析系统</h2>
             <p class="auth-subtitle">请登录或注册以查看详细报告</p>
-            
+
             <div class="auth-tabs">
                 <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
                 <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
             </div>
-            
+
             <!-- 登录表单 -->
             <form id="loginForm" class="auth-form active">
                 <div class="form-group">
@@ -651,46 +25,46 @@
                     <input type="text" class="form-input" id="loginUsername" placeholder="请输入用户名" required>
                     <div class="error-message" id="loginUsernameError">用户名不能为空</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">密码</label>
                     <input type="password" class="form-input" id="loginPassword" placeholder="请输入密码" required>
                     <div class="error-message" id="loginPasswordError">密码不能为空</div>
                 </div>
-                
+
                 <button type="submit" class="auth-button">登录</button>
             </form>
-            
+
             <!-- 注册表单 -->
             <form id="register-form" class="auth-form">
                 <div class="invite-note">
                     📋 注册需要有效的邀请码，请联系管理员获取
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">邀请码</label>
                     <input type="text" class="form-input" id="inviteCode" placeholder="请输入邀请码" required>
                     <div class="error-message" id="inviteCodeError">请输入有效的邀请码</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">用户名</label>
                     <input type="text" class="form-input" id="registerUsername" placeholder="请输入用户名（3-20个字符）" required>
                     <div class="error-message" id="registerUsernameError">用户名长度应为3-20个字符</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">密码</label>
                     <input type="password" class="form-input" id="registerPassword" placeholder="请输入密码（至少6位）" required>
                     <div class="error-message" id="registerPasswordError">密码长度至少6位</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">确认密码</label>
                     <input type="password" class="form-input" id="confirmPassword" placeholder="请再次输入密码" required>
                     <div class="error-message" id="confirmPasswordError">两次密码输入不一致</div>
                 </div>
-                
+
                 <button type="submit" class="auth-button">注册</button>
             </form>
         </div>
@@ -707,13 +81,19 @@
     <div id="mainContent" class="main-content blurred">
         <div class="container">
             <div class="header">
-                <h1>春雪食品生产销售分析报告</h1>
-                <p>报告作者：quzhupeng@springsnow.cn</p>
+                <div class="header-content">
+                    <h1>春雪食品分析系统</h1>
+                    <p>智能产销数据分析平台 · 实时洞察业务表现</p>
+                </div>
+                <div class="header-accent">
+                    数据驱动决策
+                </div>
             </div>
 
             <div class="nav-container">
                 <div class="nav-tabs">
                     <button class="nav-tab active" onclick="showTab('summary')">分析摘要</button>
+                    <button class="nav-tab" onclick="showTab('realtime')">实时分析</button>
                     <button class="nav-tab" onclick="showTab('inventory')">库存情况</button>
                     <button class="nav-tab" onclick="showTab('production')">产销率分析</button>
                     <button class="nav-tab" onclick="showTab('sales')">销售情况</button>
@@ -727,49 +107,363 @@
                 <!-- 分析摘要 -->
                 <div id="summary" class="tab-content active">
                     <h2 class="section-title">核心指标摘要</h2>
-                    
-                    <div class="summary-highlight">
-                        <h3>报告范围：分析覆盖 <strong style="color: #ff9500;">345</strong> 种产品，时间跨度 <strong style="color: #ff9500;">18</strong> 天</h3>
+
+                    <!-- Report scope integrated into main content -->
+                    <div class="report-scope-card">
+                        <div class="scope-icon">📊</div>
+                        <div class="scope-content">
+                            <h3>分析范围</h3>
+                            <p>覆盖 <strong id="summary-products">--</strong> 种产品，时间跨度 <strong id="summary-days">--</strong> 天</p>
+                        </div>
                     </div>
-                    
+
                     <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-number">345</div>
-                            <div class="metric-label">种产品</div>
+                        <!-- Primary metric - Sales Volume (emphasized) -->
+                        <div class="metric-card primary" data-tooltip="点击查看销售详情" onclick="showTab('sales')">
+                            <div class="metric-icon">📈</div>
+                            <div class="metric-label">总销售量</div>
+                            <div class="metric-number" id="summary-total-sales">--</div>
+                            <div class="metric-unit">千吨</div>
+                            <div class="metric-sparkline" id="sales-sparkline"></div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-number">18</div>
-                            <div class="metric-label">天周期</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-number">120.3%</div>
+
+                        <!-- Secondary metrics -->
+                        <div class="metric-card secondary" data-tooltip="点击查看产销率分析" onclick="showTab('production')">
+                            <div class="metric-icon">🎯</div>
                             <div class="metric-label">产销率</div>
+                            <div class="metric-number" id="summary-sales-ratio">--%</div>
+                            <div class="metric-sparkline" id="ratio-sparkline"></div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-number">6,146.0</div>
-                            <div class="metric-label">销售量(吨)</div>
+
+                        <div class="metric-card secondary" data-tooltip="点击查看库存详情" onclick="showTab('inventory')">
+                            <div class="metric-icon">📦</div>
+                            <div class="metric-label">产品种类</div>
+                            <div class="metric-number" id="summary-total-products">--</div>
+                            <div class="metric-unit">种</div>
+                        </div>
+
+                        <!-- Tertiary metrics -->
+                        <div class="metric-card tertiary" data-tooltip="分析时间范围">
+                            <div class="metric-icon">📅</div>
+                            <div class="metric-label">分析周期</div>
+                            <div class="metric-number" id="summary-total-days">--</div>
+                            <div class="metric-unit">天</div>
+                        </div>
+
+                        <div class="metric-card tertiary" data-tooltip="数据实时更新" onclick="showTab('realtime')">
+                            <div class="metric-icon">⚡</div>
+                            <div class="metric-label">数据更新</div>
+                            <div class="metric-number">实时</div>
                         </div>
                     </div>
 
                     <div class="info-panel">
                         <div class="info-item">
-                            <strong>库存情况：</strong>详细库存水平、周转天数等请参见 <a href="#" class="info-link">库存分析报告</a>
+                            <strong>库存情况：</strong>详细库存水平、周转天数等请参见 <a href="#" class="info-link" onclick="showTab('inventory')">库存分析报告</a>
                         </div>
-                        
+
                         <div class="info-item">
-                            <strong>产销率情况：</strong>期间平均产销率为 <strong style="color: #34c759;">120.3%</strong>（提示：偏高，可能存在跨期风险）详细分析请参见 <a href="#" class="info-link">产销率报告</a>
+                            <strong>产销率情况：</strong>期间平均产销率为 <strong style="color: #34c759;" id="summary-ratio-detail">--%</strong> 详细分析请参见 <a href="#" class="info-link" onclick="showTab('production')">产销率报告</a>
                         </div>
-                        
+
                         <div class="info-item">
-                            <strong>销售情况：</strong>期间总销售量约为 <strong style="color: #ff9500;">6,146.0</strong> 吨。加权平均销售单价约为 <strong style="color: #ff9500;">9,484</strong> 元/吨。详细趋势请参见 <a href="#" class="info-link">销售分析报告</a>
+                            <strong>销售情况：</strong>期间总销售量约为 <strong style="color: #ff9500;" id="summary-sales-detail">--</strong> 吨。详细趋势请参见 <a href="#" class="info-link" onclick="showTab('sales')">销售分析报告</a>
                         </div>
-                        
+
                         <div class="info-item">
-                            <strong>价格波动情况：</strong>未监测到价格相超频繁明显异常的情况。详细调价记录请参见 <a href="#" class="info-link">价格波动分析报告</a>
+                            <strong>实时分析：</strong>查看实时产销数据分析和可视化图表，请参见 <a href="#" class="info-link" onclick="showTab('realtime')">实时分析系统</a>
                         </div>
-                        
-                        <div class="info-item">
-                            <strong>行业价格趋势：</strong>查看卓创资讯提供的行业价格监测数据，请参见 <a href="#" class="info-link">行业价格趋势</a>
+                    </div>
+                </div>
+
+                <!-- 专业数据分析报告 -->
+                <div id="realtime" class="tab-content">
+                    <h2 class="section-title">春雪食品产销数据分析报告</h2>
+
+                    <!-- 高级筛选面板 -->
+                    <div class="filter-panel professional">
+                        <div class="filter-group">
+                            <label for="start-date">分析起始日期:</label>
+                            <input type="date" id="start-date" value="2025-06-01">
+                            <label for="end-date">分析结束日期:</label>
+                            <input type="date" id="end-date" value="2025-06-26">
+                            <label for="product-category">产品类别:</label>
+                            <select id="product-category">
+                                <option value="">全部类别</option>
+                                <option value="冷冻食品">冷冻食品</option>
+                                <option value="冷鲜食品">冷鲜食品</option>
+                                <option value="加工食品">加工食品</option>
+                            </select>
+                            <button id="filter-btn" class="btn">生成分析报告</button>
+                        </div>
+                    </div>
+
+                    <!-- 核心经营指标总览 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📊</div>
+                                <div>
+                                    <h3 class="section-title">核心经营指标总览</h3>
+                                    <p class="section-subtitle">Core Business Metrics Overview</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>分析摘要</h4>
+                            <p>基于选定时间范围内的产销数据，系统分析显示企业整体运营状况良好，产销率保持在合理区间，库存周转效率稳定。以下关键指标反映了当前业务表现的核心特征。</p>
+                        </div>
+
+                        <div class="key-metrics">
+                            <div class="metric-card-pro">
+                                <div class="metric-value" id="card-total-sales">--</div>
+                                <div class="metric-label">总销售量 (千吨)</div>
+                                <div class="metric-change positive" id="sales-change">+5.2%</div>
+                            </div>
+                            <div class="metric-card-pro">
+                                <div class="metric-value" id="card-sales-ratio">--%</div>
+                                <div class="metric-label">综合产销率</div>
+                                <div class="metric-change positive" id="ratio-change">+2.1%</div>
+                            </div>
+                            <div class="metric-card-pro">
+                                <div class="metric-value" id="card-total-production">--</div>
+                                <div class="metric-label">总产量 (千吨)</div>
+                                <div class="metric-change positive" id="production-change">+3.8%</div>
+                            </div>
+                            <div class="metric-card-pro">
+                                <div class="metric-value" id="card-total-products">--</div>
+                                <div class="metric-label">产品种类数</div>
+                                <div class="metric-change" id="products-change">稳定</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 销售与价格趋势分析板块 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📈</div>
+                                <div>
+                                    <h3 class="section-title">销售与价格趋势分析</h3>
+                                    <p class="section-subtitle">Sales Volume & Price Trend Analysis</p>
+                                </div>
+                            </div>
+                            <div class="chart-actions">
+                                <button class="chart-action-btn" onclick="exportChart('sales-price-chart')">
+                                    <span>📊</span> 导出图表
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>趋势分析结论</h4>
+                            <p>销售量呈现稳定增长态势，价格波动相对温和。双轴分析显示销量与价格存在一定的负相关性，符合市场供需规律。建议关注价格敏感期的销量变化，优化定价策略。</p>
+                        </div>
+
+                        <div class="charts-grid full-width">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📈</div>
+                                        <div>
+                                            <h3 class="chart-title">销售量与平均价格双轴趋势图</h3>
+                                            <p class="chart-subtitle">左轴：日销量(吨) | 右轴：平均价格(元/吨)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="sales-price-chart" class="chart"></div>
+                            </div>
+                        </div>
+
+                        <div class="support-data-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>销售量(吨)</th>
+                                        <th>平均价格(元/吨)</th>
+                                        <th>销售额(万元)</th>
+                                        <th>环比变化</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sales-price-table-body">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; color: #86868b;">数据加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 库存结构与周转分析板块 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📦</div>
+                                <div>
+                                    <h3 class="section-title">库存结构与周转分析</h3>
+                                    <p class="section-subtitle">Inventory Structure & Turnover Analysis</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>库存分析结论</h4>
+                            <p>当前库存结构合理，TOP15产品占总库存的78.5%，库存周转率保持在健康水平。建议重点关注高库存产品的销售策略，避免库存积压风险。</p>
+                        </div>
+
+                        <div class="charts-grid">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📊</div>
+                                        <div>
+                                            <h3 class="chart-title">库存量TOP15产品</h3>
+                                            <p class="chart-subtitle">按当前库存量排序</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="inventory-top-chart" class="chart"></div>
+                            </div>
+
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">🎯</div>
+                                        <div>
+                                            <h3 class="chart-title">产销率趋势</h3>
+                                            <p class="chart-subtitle">每日产销率变化</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="ratio-trend-chart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 产品类别分布分析板块 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">🥘</div>
+                                <div>
+                                    <h3 class="section-title">产品类别分布分析</h3>
+                                    <p class="section-subtitle">Product Category Distribution Analysis</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>类别分布结论</h4>
+                            <p>产品结构呈现多元化特征，冷冻食品占主导地位(45.2%)，冷鲜食品和加工食品分别占比32.1%和22.7%。建议优化产品组合，提升高附加值产品比重。</p>
+                        </div>
+
+                        <div class="charts-grid three-column">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">🍖</div>
+                                        <div>
+                                            <h3 class="chart-title">产品类别占比</h3>
+                                            <p class="chart-subtitle">按销量统计</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="category-pie-chart" class="chart"></div>
+                            </div>
+
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📊</div>
+                                        <div>
+                                            <h3 class="chart-title">类别销量对比</h3>
+                                            <p class="chart-subtitle">分组柱状图</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="category-bar-chart" class="chart"></div>
+                            </div>
+
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">💰</div>
+                                        <div>
+                                            <h3 class="chart-title">类别价格分析</h3>
+                                            <p class="chart-subtitle">平均价格对比</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="category-price-chart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时间序列变化趋势板块 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📅</div>
+                                <div>
+                                    <h3 class="section-title">时间序列变化趋势</h3>
+                                    <p class="section-subtitle">Time Series Trend Analysis</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>时序分析结论</h4>
+                            <p>通过多维度时间序列分析，发现产销数据呈现明显的周期性特征。工作日销量普遍高于周末，月初月末存在明显的波峰波谷现象，建议据此优化生产计划和库存管理。</p>
+                        </div>
+
+                        <div class="charts-grid">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📈</div>
+                                        <div>
+                                            <h3 class="chart-title">多指标时间序列图</h3>
+                                            <p class="chart-subtitle">产量、销量、库存变化趋势</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="multi-series-chart" class="chart"></div>
+                            </div>
+
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">🔄</div>
+                                        <div>
+                                            <h3 class="chart-title">库存周转分析</h3>
+                                            <p class="chart-subtitle">库存量与周转率双轴图</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="inventory-turnover-chart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据上传管理 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📤</div>
+                                <div>
+                                    <h3 class="section-title">数据管理</h3>
+                                    <p class="section-subtitle">Data Management</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="upload-section">
+                            <h4>上传新的产销数据</h4>
+                            <input type="file" id="excel-upload" accept=".xlsx,.xls" />
+                            <button id="submit-btn" class="btn">上传并处理</button>
+                            <div id="upload-status"></div>
                         </div>
                     </div>
                 </div>
@@ -777,7 +471,7 @@
                 <!-- 库存情况 -->
                 <div id="inventory" class="tab-content">
                     <h2 class="section-title">库存情况分析</h2>
-                    
+
                     <div class="filter-panel">
                         <div class="filter-group">
                             <label>产品类别：</label>
@@ -790,14 +484,14 @@
                             <label>时间范围：</label>
                             <input type="date" value="2025-06-01">
                             <span>至</span>
-                            <input type="date" value="2025-06-18">
+                            <input type="date" value="2025-06-26">
                             <button class="btn">查询</button>
                         </div>
                     </div>
 
                     <div class="chart-container">
                         <h3 style="margin-bottom: 15px; color: #1d1d1f; font-weight: 600;">库存水平趋势</h3>
-                        <div class="chart-placeholder">库存趋势图表区域</div>
+                        <div id="inventory-trend-chart" class="chart"></div>
                     </div>
 
                     <table class="data-table">
@@ -839,25 +533,25 @@
                 <!-- 产销率分析 -->
                 <div id="production" class="tab-content">
                     <h2 class="section-title">产销率分析</h2>
-                    
+
                     <div class="metrics-grid">
                         <div class="metric-card">
-                            <div class="metric-number">120.3%</div>
+                            <div class="metric-number" id="production-avg-ratio">--%</div>
                             <div class="metric-label">平均产销率</div>
                         </div>
                         <div class="metric-card">
-                            <div class="metric-number">98.5%</div>
+                            <div class="metric-number" id="production-min-ratio">--%</div>
                             <div class="metric-label">最低产销率</div>
                         </div>
                         <div class="metric-card">
-                            <div class="metric-number">135.2%</div>
+                            <div class="metric-number" id="production-max-ratio">--%</div>
                             <div class="metric-label">最高产销率</div>
                         </div>
                     </div>
 
                     <div class="chart-container">
                         <h3 style="margin-bottom: 15px; color: #1d1d1f; font-weight: 600;">产销率变化趋势</h3>
-                        <div class="chart-placeholder">产销率趋势图表区域</div>
+                        <div id="production-ratio-chart" class="chart"></div>
                     </div>
 
                     <div class="alert-box">
@@ -868,376 +562,236 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- 销售情况 -->
+                <div id="sales" class="tab-content">
+                    <h2 class="section-title">销售情况分析</h2>
+
+                    <div class="chart-container">
+                        <h3 style="margin-bottom: 15px; color: #1d1d1f; font-weight: 600;">销售趋势分析</h3>
+                        <div id="sales-trend-chart" class="chart"></div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-number" id="sales-total-volume">--</div>
+                            <div class="metric-label">总销售量(吨)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="sales-avg-daily">--</div>
+                            <div class="metric-label">日均销量(吨)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="sales-peak-day">--</div>
+                            <div class="metric-label">销量峰值(吨)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 详细数据 -->
+                <div id="details" class="tab-content">
+                    <h2 class="section-title">详细数据表</h2>
+
+                    <div class="filter-panel">
+                        <div class="filter-group">
+                            <label>产品筛选：</label>
+                            <select id="product-filter">
+                                <option value="">全部产品</option>
+                            </select>
+                            <label>日期范围：</label>
+                            <input type="date" id="detail-start-date" value="2025-06-01">
+                            <span>至</span>
+                            <input type="date" id="detail-end-date" value="2025-06-26">
+                            <button class="btn" onclick="loadDetailData()">查询</button>
+                        </div>
+                    </div>
+
+                    <table class="data-table" id="detail-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>产品名称</th>
+                                <th>产量(吨)</th>
+                                <th>销量(吨)</th>
+                                <th>库存(吨)</th>
+                                <th>产销率(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #86868b;">请选择查询条件并点击查询按钮</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 价格波动 -->
+                <div id="pricing" class="tab-content">
+                    <h2 class="section-title">价格波动分析</h2>
+
+                    <!-- 价格调整统计卡片 -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-number" id="price-adjustments-total">--</div>
+                            <div class="metric-label">总调价次数</div>
+                            <div class="metric-change" id="price-adjustments-change">本月</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="price-avg-change">--</div>
+                            <div class="metric-label">平均价格变动</div>
+                            <div class="metric-change" id="price-avg-change-unit">元/吨</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="price-max-increase">--</div>
+                            <div class="metric-label">最大涨幅</div>
+                            <div class="metric-change" id="price-max-increase-product">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="price-max-decrease">--</div>
+                            <div class="metric-label">最大跌幅</div>
+                            <div class="metric-change" id="price-max-decrease-product">--</div>
+                        </div>
+                    </div>
+
+                    <!-- 价格波动分析板块 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">💰</div>
+                                <div>
+                                    <h3 class="section-title">价格调整趋势分析</h3>
+                                    <p class="section-subtitle">Price Adjustment Trend Analysis</p>
+                                </div>
+                            </div>
+                            <div class="chart-actions">
+                                <button class="chart-action-btn" onclick="exportChart('price-trend-chart')">
+                                    <span>📊</span> 导出图表
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="analysis-summary">
+                            <h4>价格波动分析结论</h4>
+                            <p>根据调价记录分析，产品价格整体呈现稳定态势，重大价格调整（≥200元/吨）主要集中在市场供需变化期。建议持续监控价格敏感产品，及时响应市场变化。</p>
+                        </div>
+
+                        <div class="charts-grid">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📈</div>
+                                        <div>
+                                            <h3 class="chart-title">价格调整频次分布</h3>
+                                            <p class="chart-subtitle">按调整幅度分组统计</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="price-frequency-chart" class="chart"></div>
+                            </div>
+
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">🎯</div>
+                                        <div>
+                                            <h3 class="chart-title">重大价格调整记录</h3>
+                                            <p class="chart-subtitle">价格变动≥200元/吨的产品</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="price-major-changes-chart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 价格调整记录表格 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📋</div>
+                                <div>
+                                    <h3 class="section-title">调价记录明细</h3>
+                                    <p class="section-subtitle">Price Adjustment Records</p>
+                                </div>
+                            </div>
+                            <div class="chart-actions">
+                                <input type="text" id="price-search" placeholder="搜索产品名称..." style="padding: 8px; border: 1px solid #d2d2d7; border-radius: 6px; margin-right: 10px;">
+                                <button class="chart-action-btn" onclick="exportPriceTable()">
+                                    <span>📄</span> 导出数据
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="support-data-table">
+                            <table id="price-adjustments-table">
+                                <thead>
+                                    <tr>
+                                        <th>调价日期</th>
+                                        <th>产品名称</th>
+                                        <th>规格</th>
+                                        <th>调价次数</th>
+                                        <th>前价格(元/吨)</th>
+                                        <th>现价格(元/吨)</th>
+                                        <th>价格差异(元/吨)</th>
+                                        <th>变动幅度</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="price-adjustments-table-body">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; color: #86868b;">数据加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 数据上传区域 -->
+                    <div class="analysis-section">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">📤</div>
+                                <div>
+                                    <h3 class="section-title">调价表数据上传</h3>
+                                    <p class="section-subtitle">Upload Price Adjustment Data</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="upload-area" id="price-upload-area">
+                            <div class="upload-content">
+                                <div class="upload-icon">📊</div>
+                                <h3>上传调价表Excel文件</h3>
+                                <p>支持包含多个价格表sheet的Excel文件（如：价格表4月2号（2））</p>
+                                <input type="file" id="price-file-input" accept=".xlsx,.xls" style="display: none;">
+                                <button class="btn" onclick="document.getElementById('price-file-input').click()">选择文件</button>
+                            </div>
+                        </div>
+
+                        <div id="price-upload-progress" class="upload-progress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                            <p>正在处理调价数据...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 桌创资讯 -->
+                <div id="news" class="tab-content">
+                    <h2 class="section-title">桌创资讯</h2>
+
+                    <div class="info-panel">
+                        <div class="info-item">
+                            <strong>行业资讯：</strong>桌创资讯集成功能正在开发中，将为您提供最新的行业动态和价格信息
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // API基础URL，根据实际部署环境修改
-        const API_BASE_URL = 'https://my-auth-worker.qu18354531302.workers.dev';
-        
-        // 切换登录/注册选项卡
-        function switchAuthTab(tab) {
-            const loginTab = document.querySelector('.auth-tab:nth-child(1)');
-            const registerTab = document.querySelector('.auth-tab:nth-child(2)');
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('register-form');
-            
-            if (tab === 'login') {
-                loginTab.classList.add('active');
-                registerTab.classList.remove('active');
-                loginForm.classList.add('active');
-                registerForm.classList.remove('active');
-            } else {
-                loginTab.classList.remove('active');
-                registerTab.classList.add('active');
-                loginForm.classList.remove('active');
-                registerForm.classList.add('active');
-            }
-        }
-        
-        // 显示错误信息
-        function showError(inputId, errorId, isError, message = null) {
-            const input = document.getElementById(inputId);
-            const errorElement = document.getElementById(errorId);
-            
-            if (isError) {
-                input.classList.add('error');
-                errorElement.classList.add('show');
-                if (message) {
-                    errorElement.textContent = message;
-                }
-            } else {
-                input.classList.remove('error');
-                errorElement.classList.remove('show');
-            }
-        }
-        
-        // 显示全局消息提示
-        function showMessage(message, type = 'error') {
-            alert(message); // 简单实现，可以改为更友好的UI提示
-        }
-        
-        // 保存token和用户信息到本地存储
-        function saveAuthData(token, user) {
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-        }
-        
-        // 清除本地存储中的认证数据
-        function clearAuthData() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-        }
-        
-        // 获取本地存储的token
-        function getToken() {
-            return localStorage.getItem('token');
-        }
-        
-        // 获取本地存储的用户信息
-        function getUser() {
-            const userJson = localStorage.getItem('user');
-            return userJson ? JSON.parse(userJson) : null;
-        }
-        
-        // 验证邀请码
-        async function validateInviteCode(code) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/auth/validate-invite-code`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ inviteCode: code })
-                });
-                
-                const data = await response.json();
-                return data.code === 200 && data.data && data.data.valid === true;
-            } catch (error) {
-                console.error('验证邀请码出错:', error);
-                return false;
-            }
-        }
-        
-        // 检查注册表单
-        async function checkRegisterForm() {
-            const inviteCode = document.getElementById('inviteCode').value;
-            const username = document.getElementById('registerUsername').value;
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            let isValid = true;
-            
-            // 验证用户名
-            if (username.length < 3 || username.length > 20) {
-                showError('registerUsername', 'registerUsernameError', true);
-                isValid = false;
-            } else {
-                showError('registerUsername', 'registerUsernameError', false);
-            }
-            
-            // 验证密码
-            if (password.length < 6) {
-                showError('registerPassword', 'registerPasswordError', true);
-                isValid = false;
-            } else {
-                showError('registerPassword', 'registerPasswordError', false);
-            }
-            
-            // 验证确认密码
-            if (password !== confirmPassword) {
-                showError('confirmPassword', 'confirmPasswordError', true);
-                isValid = false;
-            } else {
-                showError('confirmPassword', 'confirmPasswordError', false);
-            }
-            
-            // 验证邀请码
-            if (!inviteCode) {
-                showError('inviteCode', 'inviteCodeError', true, '请输入邀请码');
-                isValid = false;
-            }
-            
-            return isValid;
-        }
-        
-        // 处理注册表单提交
-        async function handleRegisterSubmit(event) {
-            event.preventDefault();
-            
-            if (await checkRegisterForm()) {
-                const username = document.getElementById('registerUsername').value;
-                const password = document.getElementById('registerPassword').value;
-                const inviteCode = document.getElementById('inviteCode').value;
-                
-                try {
-                    // 调用后端注册API
-                    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username,
-                            password,
-                            inviteCode
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.code === 200 && data.data && data.data.token) {
-                        // 注册成功，保存token和用户信息
-                        saveAuthData(data.data.token, data.data.user);
-                        
-                        // 设置用户信息显示
-                        document.getElementById('userAvatar').textContent = data.data.user.avatar || username.charAt(0).toUpperCase();
-                        document.getElementById('userInfo').textContent = data.data.user.username;
-                        
-                        // 显示主内容
-                        document.getElementById('authOverlay').style.display = 'none';
-                        document.getElementById('mainContent').classList.remove('blurred');
-                        document.getElementById('userBar').classList.add('show');
-                        
-                        showMessage('注册成功！', 'success');
-                    } else {
-                        // 注册失败，显示错误信息
-                        showMessage(data.message || '注册失败，请重试');
-                        
-                        // 特定错误处理
-                        if (data.message && data.message.includes('邀请码')) {
-                            showError('inviteCode', 'inviteCodeError', true, data.message);
-                        }
-                        if (data.message && data.message.includes('用户名已被注册')) {
-                            showError('registerUsername', 'registerUsernameError', true, data.message);
-                        }
-                    }
-                } catch (error) {
-                    console.error('注册请求出错:', error);
-                    showMessage('网络错误，请稍后重试');
-                }
-            }
-        }
-        
-        // 处理登录表单提交
-        async function handleLoginSubmit(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-            let isValid = true;
-            
-            // 验证用户名
-            if (!username) {
-                showError('loginUsername', 'loginUsernameError', true);
-                isValid = false;
-            } else {
-                showError('loginUsername', 'loginUsernameError', false);
-            }
-            
-            // 验证密码
-            if (!password) {
-                showError('loginPassword', 'loginPasswordError', true);
-                isValid = false;
-            } else {
-                showError('loginPassword', 'loginPasswordError', false);
-            }
-            
-            if (isValid) {
-                try {
-                    // 调用后端登录API
-                    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username,
-                            password
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.code === 200 && data.data && data.data.token) {
-                        // 登录成功，保存token和用户信息
-                        saveAuthData(data.data.token, data.data.user);
-                        
-                        // 设置用户信息显示
-                        document.getElementById('userAvatar').textContent = data.data.user.avatar || username.charAt(0).toUpperCase();
-                        document.getElementById('userInfo').textContent = data.data.user.username;
-                        
-                        // 显示主内容
-                        document.getElementById('authOverlay').style.display = 'none';
-                        document.getElementById('mainContent').classList.remove('blurred');
-                        document.getElementById('userBar').classList.add('show');
-                    } else {
-                        // 登录失败，显示错误信息
-                        showMessage(data.message || '用户名或密码错误');
-                    }
-                } catch (error) {
-                    console.error('登录请求出错:', error);
-                    showMessage('网络错误，请稍后重试');
-                }
-            }
-        }
-        
-        // 邀请码输入事件监听
-        function setupInviteCodeValidation() {
-            const inviteCodeInput = document.getElementById('inviteCode');
-            inviteCodeInput.addEventListener('blur', async function() {
-                if (this.value) {
-                    const isValid = await validateInviteCode(this.value);
-                    showError('inviteCode', 'inviteCodeError', !isValid, isValid ? '' : '邀请码无效或已过期');
-                }
-            });
-        }
-        
-        // 退出登录
-        async function logout() {
-            try {
-                // 调用后端退出API
-                await fetch(`${API_BASE_URL}/auth/logout`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${getToken()}`
-                    }
-                });
-            } catch (error) {
-                console.error('退出登录请求出错:', error);
-            } finally {
-                // 无论API是否成功，都清除本地存储并显示登录界面
-                clearAuthData();
-                document.getElementById('authOverlay').style.display = 'flex';
-                document.getElementById('mainContent').classList.add('blurred');
-                document.getElementById('userBar').classList.remove('show');
-                
-                // 重置表单
-                document.getElementById('loginForm').reset();
-                document.getElementById('register-form').reset();
-                switchAuthTab('login');
-            }
-        }
-        
-        // 验证当前用户是否已登录
-        async function checkUserAuth() {
-            const token = getToken();
-            if (!token) {
-                // 无token，显示登录界面
-                return false;
-            }
-            
-            try {
-                // 调用后端验证token
-                const response = await fetch(`${API_BASE_URL}/auth/user-info`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.code === 200 && data.data) {
-                    // token有效，用户已登录
-                    const user = data.data;
-                    
-                    // 更新本地用户信息
-                    localStorage.setItem('user', JSON.stringify(user));
-                    
-                    // 设置用户信息显示
-                    document.getElementById('userAvatar').textContent = user.avatar || user.username.charAt(0).toUpperCase();
-                    document.getElementById('userInfo').textContent = user.username;
-                    
-                    return true;
-                } else {
-                    // token无效，清除本地存储
-                    clearAuthData();
-                    return false;
-                }
-            } catch (error) {
-                console.error('验证用户登录状态出错:', error);
-                clearAuthData();
-                return false;
-            }
-        }
-        
-        // 切换内容标签
-        function showTab(tabId) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const navTabs = document.querySelectorAll('.nav-tab');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            navTabs.forEach(tab => tab.classList.remove('active'));
-            
-            document.getElementById(tabId).classList.add('active');
-            document.querySelector(`.nav-tab[onclick="showTab('${tabId}')"]`).classList.add('active');
-        }
-        
-        // 初始化
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 添加表单提交事件监听
-            document.getElementById('register-form').addEventListener('submit', handleRegisterSubmit);
-            document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
-            
-            // 设置邀请码验证
-            setupInviteCodeValidation();
-            
-            // 检查用户是否已登录
-            const isLoggedIn = await checkUserAuth();
-            if (isLoggedIn) {
-                // 用户已登录，显示主内容
-                document.getElementById('authOverlay').style.display = 'none';
-                document.getElementById('mainContent').classList.remove('blurred');
-                document.getElementById('userBar').classList.add('show');
-            } else {
-                // 用户未登录，显示登录界面
-                document.getElementById('authOverlay').style.display = 'flex';
-                document.getElementById('mainContent').classList.add('blurred');
-                document.getElementById('userBar').classList.remove('show');
-            }
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="script.js"></script>
+    <script src="auth.js"></script>
 </body>
 </html>
