@@ -9,6 +9,90 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// --- Business Logic Layer ---
+
+/**
+ * Centralized product filtering logic based on original Python script requirements
+ * Filters out:
+ * 1. Fresh products (starting with '鲜') except '凤肠' products
+ * 2. By-products and empty categories (when category filtering is enabled)
+ */
+class ProductFilter {
+  /**
+   * Generate SQL WHERE clause for product name filtering
+   * Always excludes fresh products except '凤肠'
+   */
+  static getProductNameFilter(): string {
+    return `(
+      -- Keep products that don't start with '鲜' (fresh products)
+      p.product_name NOT LIKE '鲜%'
+      OR
+      -- Special exception: keep '凤肠' products even if they contain '鲜'
+      p.product_name LIKE '%凤肠%'
+    )`;
+  }
+
+  /**
+   * Generate SQL WHERE clause for category filtering
+   * @param strict - If true, requires category to be non-null/non-empty
+   *                If false, allows null/empty categories (relaxed mode)
+   */
+  static getCategoryFilter(strict: boolean = false): string {
+    if (strict) {
+      return `(
+        -- Strict mode: require valid category and exclude specific ones
+        p.category IS NOT NULL
+        AND p.category != ''
+        AND p.category NOT IN ('副产品', '生鲜品其他')
+      )`;
+    } else {
+      return `(
+        -- Relaxed mode: allow null/empty categories or exclude specific ones
+        p.category IS NULL
+        OR p.category = ''
+        OR p.category NOT IN ('副产品', '生鲜品其他')
+      )`;
+    }
+  }
+
+  /**
+   * Generate complete product filtering WHERE clause
+   * @param strict - Whether to use strict category filtering
+   * @param tableAlias - Table alias for the Products table (default: 'p')
+   */
+  static getCompleteFilter(strict: boolean = false, tableAlias: string = 'p'): string {
+    const productNameFilter = this.getProductNameFilter().replace(/p\./g, `${tableAlias}.`);
+    const categoryFilter = this.getCategoryFilter(strict).replace(/p\./g, `${tableAlias}.`);
+
+    return `${productNameFilter} AND ${categoryFilter}`;
+  }
+
+  /**
+   * Generate filtering for PriceAdjustments table (uses pa.product_name and pa.category)
+   */
+  static getPriceAdjustmentFilter(strict: boolean = false): string {
+    const productNameFilter = `(
+      pa.product_name NOT LIKE '鲜%'
+      OR
+      pa.product_name LIKE '%凤肠%'
+    )`;
+
+    const categoryFilter = strict
+      ? `(
+          pa.category IS NOT NULL
+          AND pa.category != ''
+          AND pa.category NOT IN ('副产品', '生鲜品其他')
+        )`
+      : `(
+          pa.category IS NULL
+          OR pa.category = ''
+          OR pa.category NOT IN ('副产品', '生鲜品其他')
+        )`;
+
+    return `${productNameFilter} AND ${categoryFilter}`;
+  }
+}
+
 // Apply CORS middleware with specific configuration
 app.use('/*', cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:8080'],
@@ -25,6 +109,60 @@ app.options('/*', (c) => {
 });
 
 // --- API Endpoints ---
+
+app.post('/api/register', async (c) => {
+  const { username, password, inviteCode } = await c.req.json();
+
+  if (!username || !password || !inviteCode) {
+    return c.json({ success: false, message: 'Missing required fields' }, 400);
+  }
+
+  // In a real application, you would have a database of invite codes.
+  if (inviteCode !== 'SPRING2024') {
+    return c.json({ success: false, message: 'Invalid invite code' }, 400);
+  }
+
+  try {
+    // In a real application, you would hash the password before storing it.
+    const ps = c.env.DB.prepare('INSERT INTO Users (username, password) VALUES (?, ?)').bind(username, password);
+    await ps.run();
+
+    // In a real application, you would generate a proper JWT.
+    const token = 'mock-token-' + Date.now();
+    const user = { username, avatar: username.charAt(0).toUpperCase() };
+
+    return c.json({ success: true, token, user });
+  } catch (e: any) {
+    if (e.message.includes('UNIQUE constraint failed')) {
+      return c.json({ success: false, message: 'Username already exists' }, 409);
+    }
+    return c.json({ success: false, message: 'Registration failed', details: e.message }, 500);
+  }
+});
+
+app.post('/api/login', async (c) => {
+  const { username, password } = await c.req.json();
+
+  if (!username || !password) {
+    return c.json({ success: false, message: 'Missing required fields' }, 400);
+  }
+
+  try {
+    const ps = c.env.DB.prepare('SELECT * FROM Users WHERE username = ? AND password = ?').bind(username, password);
+    const user = await ps.first();
+
+    if (user) {
+      // In a real application, you would generate a proper JWT.
+      const token = 'mock-token-' + Date.now();
+      const userResponse = { username: user.username, avatar: user.username.charAt(0).toUpperCase() };
+      return c.json({ success: true, token, user: userResponse });
+    } else {
+      return c.json({ success: false, message: 'Invalid username or password' }, 401);
+    }
+  } catch (e: any) {
+    return c.json({ success: false, message: 'Login failed', details: e.message }, 500);
+  }
+});
 
 // Endpoint to get all products
 app.get('/api/products', async (c) => {
@@ -76,10 +214,9 @@ app.get('/api/inventory/top', async (c) => {
   }
 
   try {
-    // Apply data filtering logic from original Python script:
-    // 1. Filter out fresh products (starting with '鲜')
-    // 2. Filter out by-products and empty categories
-    // 3. Special handling for '凤肠' products (keep them)
+    // Use centralized filtering logic (relaxed mode for inventory)
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
     const ps = c.env.DB.prepare(
       `SELECT
          p.product_name,
@@ -89,19 +226,7 @@ app.get('/api/inventory/top', async (c) => {
        WHERE dm.record_date = ?1
          AND dm.inventory_level IS NOT NULL
          AND dm.inventory_level > 0
-         AND (
-           -- Keep products that don't start with '鲜' (fresh products)
-           p.product_name NOT LIKE '鲜%'
-           OR
-           -- Special exception: keep '凤肠' products even if they contain '鲜'
-           p.product_name LIKE '%凤肠%'
-         )
-         AND (
-           -- Filter out by-products and empty categories (if category exists)
-           p.category IS NULL
-           OR p.category = ''
-           OR p.category NOT IN ('副产品', '生鲜品其他')
-         )
+         AND ${filterClause}
        ORDER BY dm.inventory_level DESC
        LIMIT ?2`
     ).bind(date, parseInt(limit, 10));
@@ -123,7 +248,9 @@ app.get('/api/trends/ratio', async (c) => {
   }
 
   try {
-    // Apply consistent data filtering logic from original Python script
+    // Use centralized filtering logic (relaxed mode for trends)
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
     const ps = c.env.DB.prepare(
       `SELECT
         dm.record_date,
@@ -135,19 +262,7 @@ app.get('/api/trends/ratio', async (c) => {
         AND dm.production_volume IS NOT NULL
         AND dm.sales_volume > 0
         AND dm.production_volume > 0
-        AND (
-          -- Filter out fresh products (starting with '鲜')
-          p.product_name NOT LIKE '鲜%'
-          OR
-          -- Special exception: keep '凤肠' products
-          p.product_name LIKE '%凤肠%'
-        )
-        AND (
-          -- Filter out by-products and empty categories (if category exists)
-          p.category IS NULL
-          OR p.category = ''
-          OR p.category NOT IN ('副产品', '生鲜品其他')
-        )
+        AND ${filterClause}
       GROUP BY dm.record_date
       ORDER BY dm.record_date ASC`
     ).bind(start_date, end_date);
@@ -169,7 +284,9 @@ app.get('/api/trends/sales-price', async (c) => {
   }
 
   try {
-    // Apply consistent data filtering logic from original Python script
+    // Use centralized filtering logic (relaxed mode for trends)
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
     const ps = c.env.DB.prepare(
       `SELECT
          dm.record_date,
@@ -180,19 +297,7 @@ app.get('/api/trends/sales-price', async (c) => {
        WHERE dm.record_date BETWEEN ?1 AND ?2
          AND dm.sales_volume IS NOT NULL
          AND dm.sales_volume > 0
-         AND (
-           -- Filter out fresh products (starting with '鲜')
-           p.product_name NOT LIKE '鲜%'
-           OR
-           -- Special exception: keep '凤肠' products
-           p.product_name LIKE '%凤肠%'
-         )
-         AND (
-           -- Filter out by-products and empty categories (if category exists)
-           p.category IS NULL
-           OR p.category = ''
-           OR p.category NOT IN ('副产品', '生鲜品其他')
-         )
+         AND ${filterClause}
        GROUP BY dm.record_date
        ORDER BY dm.record_date ASC`
     ).bind(start_date, end_date);
@@ -214,11 +319,9 @@ app.get('/api/price-changes', async (c) => {
   }
 
   try {
-    // Apply the same filtering logic from original Python script:
-    // 1. Filter out fresh products (starting with '鲜')
-    // 2. Filter out by-products and empty categories
-    // 3. Special handling for '凤肠' products (keep them)
-    // 4. Only show significant price changes (≥ threshold)
+    // Use centralized filtering logic (relaxed mode for consistency)
+    const filterClause = ProductFilter.getPriceAdjustmentFilter(false);
+
     const ps = c.env.DB.prepare(
       `SELECT
          pa.adjustment_date,
@@ -233,19 +336,7 @@ app.get('/api/price-changes', async (c) => {
        JOIN Products p ON pa.product_id = p.product_id
        WHERE pa.adjustment_date BETWEEN ?1 AND ?2
          AND ABS(pa.price_difference) >= ?3
-         AND (
-           -- Filter out fresh products (starting with '鲜')
-           pa.product_name NOT LIKE '鲜%'
-           OR
-           -- Special exception: keep '凤肠' products
-           pa.product_name LIKE '%凤肠%'
-         )
-         AND (
-           -- Filter out by-products and empty categories
-           pa.category IS NOT NULL
-           AND pa.category != ''
-           AND pa.category NOT IN ('副产品', '生鲜品其他')
-         )
+         AND ${filterClause}
        ORDER BY pa.adjustment_date DESC, ABS(pa.price_difference) DESC`
     ).bind(start_date, end_date, parseFloat(min_price_diff));
 
@@ -265,6 +356,9 @@ app.get('/api/price-trends', async (c) => {
   }
 
   try {
+    // Use centralized filtering logic (relaxed mode for consistency)
+    const filterClause = ProductFilter.getPriceAdjustmentFilter(false);
+
     let query = `
       SELECT
         pa.adjustment_date,
@@ -274,16 +368,7 @@ app.get('/api/price-trends', async (c) => {
       FROM PriceAdjustments pa
       JOIN Products p ON pa.product_id = p.product_id
       WHERE pa.adjustment_date BETWEEN ?1 AND ?2
-        AND (
-          -- Apply same filtering logic
-          pa.product_name NOT LIKE '鲜%'
-          OR pa.product_name LIKE '%凤肠%'
-        )
-        AND (
-          pa.category IS NOT NULL
-          AND pa.category != ''
-          AND pa.category NOT IN ('副产品', '生鲜品其他')
-        )
+        AND ${filterClause}
     `;
 
     const params = [start_date, end_date];
@@ -430,7 +515,63 @@ app.post('/api/upload/price-adjustments', async (c) => {
   }
 });
 
-// Endpoint for handling Excel file uploads
+// --- Data Validation Layer ---
+
+/**
+ * Data validation utilities for upload endpoints
+ */
+class DataValidator {
+  /**
+   * Validate DailyMetrics row data
+   */
+  static validateDailyMetricsRow(row: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // Required fields validation
+    if (!row.product_id || isNaN(parseInt(row.product_id))) {
+      errors.push('Invalid or missing product_id');
+    }
+
+    if (!row.record_date) {
+      errors.push('Missing record_date');
+    } else {
+      // Validate date format
+      const date = new Date(row.record_date);
+      if (isNaN(date.getTime())) {
+        errors.push('Invalid record_date format');
+      }
+    }
+
+    // Numeric fields validation (allow null/undefined for optional fields)
+    const numericFields = ['production_volume', 'sales_volume', 'inventory_level', 'average_price'];
+    for (const field of numericFields) {
+      if (row[field] !== null && row[field] !== undefined && row[field] !== '') {
+        const value = parseFloat(row[field]);
+        if (isNaN(value) || value < 0) {
+          errors.push(`Invalid ${field}: must be a non-negative number`);
+        }
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  /**
+   * Sanitize and clean row data
+   */
+  static sanitizeDailyMetricsRow(row: any): any {
+    return {
+      product_id: parseInt(row.product_id),
+      record_date: row.record_date,
+      production_volume: row.production_volume ? parseFloat(row.production_volume) : null,
+      sales_volume: row.sales_volume ? parseFloat(row.sales_volume) : null,
+      inventory_level: row.inventory_level ? parseFloat(row.inventory_level) : null,
+      average_price: row.average_price ? parseFloat(row.average_price) : null
+    };
+  }
+}
+
+// Endpoint for handling Excel file uploads with enhanced validation
 app.post('/api/upload', async (c) => {
   try {
     const formData = await c.req.formData();
@@ -451,20 +592,58 @@ app.post('/api/upload', async (c) => {
     }
 
     const db = c.env.DB;
+    const validRows: any[] = [];
+    const errors: string[] = [];
 
-    // In a real-world scenario, you would perform more robust data cleaning and validation here.
-    // This example assumes the Excel columns match the database fields.
+    // Validate and sanitize each row
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const validation = DataValidator.validateDailyMetricsRow(row);
 
-    const stmts = rows.map(row => {
-        const { product_id, record_date, production_volume, sales_volume, inventory_level, average_price } = row as any;
-        return db.prepare(
-          'INSERT INTO DailyMetrics (product_id, record_date, production_volume, sales_volume, inventory_level, average_price) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(product_id, record_date, production_volume, sales_volume, inventory_level, average_price);
-      });
+      if (validation.isValid) {
+        validRows.push(DataValidator.sanitizeDailyMetricsRow(row));
+      } else {
+        errors.push(`Row ${i + 1}: ${validation.errors.join(', ')}`);
+      }
+    }
+
+    // If too many errors, reject the upload
+    if (errors.length > rows.length * 0.1) { // Allow up to 10% error rate
+      return c.json({
+        error: 'Too many validation errors in uploaded data',
+        details: errors.slice(0, 10), // Show first 10 errors
+        totalErrors: errors.length,
+        totalRows: rows.length
+      }, 400);
+    }
+
+    if (validRows.length === 0) {
+      return c.json({ error: 'No valid rows found in uploaded data' }, 400);
+    }
+
+    // Prepare batch insert statements
+    const stmts = validRows.map(row => {
+      return db.prepare(
+        'INSERT INTO DailyMetrics (product_id, record_date, production_volume, sales_volume, inventory_level, average_price) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        row.product_id,
+        row.record_date,
+        row.production_volume,
+        row.sales_volume,
+        row.inventory_level,
+        row.average_price
+      );
+    });
 
     const batchResult = await db.batch(stmts);
 
-    return c.json({ message: 'Upload successful', results: batchResult });
+    return c.json({
+      message: 'Upload successful',
+      results: batchResult,
+      processedRows: validRows.length,
+      skippedRows: errors.length,
+      errors: errors.length > 0 ? errors.slice(0, 5) : undefined // Show first 5 errors if any
+    });
 
   } catch (e: any) {
     console.error('Upload error:', e);

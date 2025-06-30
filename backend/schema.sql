@@ -44,3 +44,11 @@ CREATE INDEX idx_priceadjustments_price_diff ON PriceAdjustments(price_differenc
 -- 为DailyMetrics表的关键查询字段创建索引，大幅提升查询性能
 CREATE INDEX idx_dailymetrics_date ON DailyMetrics(record_date);
 CREATE INDEX idx_dailymetrics_product_id ON DailyMetrics(product_id);
+
+-- 用户表，用于存储用户信息
+CREATE TABLE Users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT, -- 用户的唯一标识，自动递增
+    username TEXT NOT NULL UNIQUE,             -- 用户名，必须唯一且不能为空
+    password TEXT NOT NULL,                    -- 密码
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP      -- 记录创建时间
+);

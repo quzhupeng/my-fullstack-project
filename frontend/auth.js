@@ -2,7 +2,7 @@
 const AUTH_API_BASE_URL = 'https://my-auth-worker.qu18354531302.workers.dev';
 
 // 开发模式：跳过认证（用于测试）
-const DEVELOPMENT_MODE = true;
+const DEVELOPMENT_MODE = false;
 
 // 切换登录/注册选项卡
 function switchAuthTab(tab) {
@@ -69,40 +69,7 @@ function getUser() {
     return userJson ? JSON.parse(userJson) : null;
 }
 
-// 模拟登录验证（因为没有真实的认证服务器）
-function mockLogin(username, password) {
-    // 简单的模拟验证
-    if (username && password) {
-        return {
-            success: true,
-            token: 'mock-token-' + Date.now(),
-            user: {
-                username: username,
-                avatar: username.charAt(0).toUpperCase()
-            }
-        };
-    }
-    return { success: false, message: '用户名或密码错误' };
-}
 
-// 模拟注册验证
-function mockRegister(username, password, inviteCode) {
-    // 简单的模拟验证
-    if (username && password && inviteCode === 'SPRING2024') {
-        return {
-            success: true,
-            token: 'mock-token-' + Date.now(),
-            user: {
-                username: username,
-                avatar: username.charAt(0).toUpperCase()
-            }
-        };
-    }
-    if (inviteCode !== 'SPRING2024') {
-        return { success: false, message: '邀请码无效' };
-    }
-    return { success: false, message: '注册失败，请重试' };
-}
 
 // 处理登录表单提交
 async function handleLoginSubmit(event) {
@@ -129,38 +96,49 @@ async function handleLoginSubmit(event) {
     }
     
     if (isValid) {
-        // 使用模拟登录
-        const result = mockLogin(username, password);
-        
-        if (result.success) {
-            // 登录成功，保存token和用户信息
-            saveAuthData(result.token, result.user);
-            
-            // 设置用户信息显示
-            document.getElementById('userAvatar').textContent = result.user.avatar;
-            document.getElementById('userInfo').textContent = result.user.username;
-            
-            // 显示主内容
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('mainContent').classList.remove('blurred');
-            document.getElementById('userBar').classList.add('show');
-            
-            // 加载所有数据（摘要 + 图表）
-            console.log('🔄 Login successful, loading data...');
-            setTimeout(async () => {
-                if (typeof window.loadAllData === 'function') {
-                    console.log('📊 Calling loadAllData...');
-                    await window.loadAllData();
-                } else if (typeof window.loadSummaryData === 'function') {
-                    console.log('📊 Calling loadSummaryData...');
-                    await window.loadSummaryData();
-                } else {
-                    console.warn('⚠️ No data loading functions available');
-                }
-            }, 100);
-        } else {
-            // 登录失败，显示错误信息
-            showMessage(result.message || '用户名或密码错误');
+        try {
+            const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                // 登录成功，保存token和用户信息
+                saveAuthData(result.token, result.user);
+                
+                // 设置用户信息显示
+                document.getElementById('userAvatar').textContent = result.user.avatar;
+                document.getElementById('userInfo').textContent = result.user.username;
+                
+                // 显示主内容
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('mainContent').classList.remove('blurred');
+                document.getElementById('userBar').classList.add('show');
+                
+                // 加载所有数据（摘要 + 图表）
+                console.log('🔄 Login successful, loading data...');
+                setTimeout(async () => {
+                    if (typeof window.loadAllData === 'function') {
+                        console.log('📊 Calling loadAllData...');
+                        await window.loadAllData();
+                    } else if (typeof window.loadSummaryData === 'function') {
+                        console.log('📊 Calling loadSummaryData...');
+                        await window.loadSummaryData();
+                    } else {
+                        console.warn('⚠️ No data loading functions available');
+                    }
+                }, 100);
+            } else {
+                // 登录失败，显示错误信息
+                showMessage(result.message || '用户名或密码错误');
+            }
+        } catch (error) {
+            showMessage('登录请求失败，请稍后重试');
         }
     }
 }
@@ -208,45 +186,56 @@ async function handleRegisterSubmit(event) {
     }
     
     if (isValid) {
-        // 使用模拟注册
-        const result = mockRegister(username, password, inviteCode);
-        
-        if (result.success) {
-            // 注册成功，保存token和用户信息
-            saveAuthData(result.token, result.user);
-            
-            // 设置用户信息显示
-            document.getElementById('userAvatar').textContent = result.user.avatar;
-            document.getElementById('userInfo').textContent = result.user.username;
-            
-            // 显示主内容
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('mainContent').classList.remove('blurred');
-            document.getElementById('userBar').classList.add('show');
-            
-            showMessage('注册成功！', 'success');
-            
-            // 加载所有数据（摘要 + 图表）
-            console.log('🔄 Registration successful, loading data...');
-            setTimeout(async () => {
-                if (typeof window.loadAllData === 'function') {
-                    console.log('📊 Calling loadAllData...');
-                    await window.loadAllData();
-                } else if (typeof window.loadSummaryData === 'function') {
-                    console.log('📊 Calling loadSummaryData...');
-                    await window.loadSummaryData();
-                } else {
-                    console.warn('⚠️ No data loading functions available');
+        try {
+            const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password, inviteCode })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                // 注册成功，保存token和用户信息
+                saveAuthData(result.token, result.user);
+                
+                // 设置用户信息显示
+                document.getElementById('userAvatar').textContent = result.user.avatar;
+                document.getElementById('userInfo').textContent = result.user.username;
+                
+                // 显示主内容
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('mainContent').classList.remove('blurred');
+                document.getElementById('userBar').classList.add('show');
+                
+                showMessage('注册成功！', 'success');
+                
+                // 加载所有数据（摘要 + 图表）
+                console.log('🔄 Registration successful, loading data...');
+                setTimeout(async () => {
+                    if (typeof window.loadAllData === 'function') {
+                        console.log('📊 Calling loadAllData...');
+                        await window.loadAllData();
+                    } else if (typeof window.loadSummaryData === 'function') {
+                        console.log('📊 Calling loadSummaryData...');
+                        await window.loadSummaryData();
+                    } else {
+                        console.warn('⚠️ No data loading functions available');
+                    }
+                }, 100);
+            } else {
+                // 注册失败，显示错误信息
+                showMessage(result.message);
+                
+                // 特定错误处理
+                if (result.message && result.message.includes('邀请码')) {
+                    showError('inviteCode', 'inviteCodeError', true, result.message);
                 }
-            }, 100);
-        } else {
-            // 注册失败，显示错误信息
-            showMessage(result.message);
-            
-            // 特定错误处理
-            if (result.message && result.message.includes('邀请码')) {
-                showError('inviteCode', 'inviteCodeError', true, result.message);
             }
+        } catch (error) {
+            showMessage('注册请求失败，请稍后重试');
         }
     }
 }
@@ -320,7 +309,6 @@ function showTab(tabId) {
     }
 }
 
-// 初始化认证系统
 function initializeAuth() {
     // 开发模式：直接跳过认证
     if (DEVELOPMENT_MODE) {
@@ -355,48 +343,14 @@ function initializeAuth() {
             }
         }, 100);
     } else {
-        // 用户未登录，自动使用演示账户登录
-        console.log('🔐 No user logged in, auto-login with demo account...');
-        autoLoginDemo();
+        // 用户未登录，显示登录界面
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('mainContent').classList.add('blurred');
+        document.getElementById('userBar').classList.remove('show');
     }
 }
 
-// 自动演示登录
-function autoLoginDemo() {
-    const demoUser = {
-        username: '演示用户',
-        avatar: '演'
-    };
-    const demoToken = 'demo-token-' + Date.now();
 
-    // 保存演示用户信息
-    saveAuthData(demoToken, demoUser);
-
-    // 设置用户信息显示
-    document.getElementById('userAvatar').textContent = demoUser.avatar;
-    document.getElementById('userInfo').textContent = demoUser.username;
-
-    // 隐藏登录界面，显示主内容
-    document.getElementById('authOverlay').style.display = 'none';
-    document.getElementById('mainContent').classList.remove('blurred');
-    document.getElementById('userBar').classList.add('show');
-
-    console.log('✅ Auto-login successful, loading data...');
-
-    // 加载所有数据（摘要 + 图表）
-    console.log('🔄 Auto-login successful, loading data...');
-    setTimeout(async () => {
-        if (typeof window.loadAllData === 'function') {
-            console.log('📊 Calling loadAllData...');
-            await window.loadAllData();
-        } else if (typeof window.loadSummaryData === 'function') {
-            console.log('📊 Calling loadSummaryData...');
-            await window.loadSummaryData();
-        } else {
-            console.warn('⚠️ No data loading functions available');
-        }
-    }, 100);
-}
 
 // 页面加载完成后初始化认证系统
 document.addEventListener('DOMContentLoaded', () => {
