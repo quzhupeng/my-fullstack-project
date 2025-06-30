@@ -1,5 +1,5 @@
 // API基础URL，根据实际部署环境修改
-const AUTH_API_BASE_URL = 'https://my-auth-worker.qu18354531302.workers.dev';
+const AUTH_API_BASE_URL = 'https://backend.qu18354531302.workers.dev';
 
 // 开发模式：跳过认证（用于测试）
 const DEVELOPMENT_MODE = false;
@@ -97,7 +97,7 @@ async function handleLoginSubmit(event) {
     
     if (isValid) {
         try {
-            const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
+            const response = await fetch(`${AUTH_API_BASE_URL}/api/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -187,7 +187,7 @@ async function handleRegisterSubmit(event) {
     
     if (isValid) {
         try {
-            const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
+            const response = await fetch(`${AUTH_API_BASE_URL}/api/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
