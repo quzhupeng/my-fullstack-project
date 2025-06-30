@@ -1,5 +1,8 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = 'http://localhost:8787';
+// 生产环境API地址
+const API_BASE_URL = 'https://backend.qu18354531302.workers.dev';
+// 本地开发环境API地址
+// const API_BASE_URL = 'http://localhost:8787';
 
 // 添加调试日志
 console.log('🚀 Script.js loaded, API_BASE_URL:', API_BASE_URL);
