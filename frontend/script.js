@@ -1086,11 +1086,10 @@ function showTab(tabName) {
             if (ratioTrendChart) updateRatioTrendChart(startDate, endDate);
             break;
         case 'inventory':
-            // 库存情况页面 - 加载库存总量、TOP15图表、占比饼图和产销率趋势
-            loadInventorySummary(endDate);
-            if (inventoryChart) updateInventoryChart(endDate);
-            if (inventoryPieChart) updateInventoryPieChart(endDate);
-            if (productionRatioTrendChart) updateProductionRatioTrendChart(startDate, endDate);
+            // 库存情况页面 - 加载所有库存相关数据
+            updateInventoryAnalytics(endDate); // 统一调用新函数
+            if (inventoryChart) updateInventoryChart(endDate); // 保留TOP15图表更新
+            if (productionRatioTrendChart) updateProductionRatioTrendChart(startDate, endDate); // 保留产销率趋势更新
             break;
         case 'sales':
             // 销售情况页面
@@ -2815,35 +2814,14 @@ function initInventoryPieChart() {
     const option = {
         tooltip: {
             trigger: 'item',
-            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            borderColor: '#E0E0E0',
-            borderWidth: 1,
-            textStyle: {
-                color: '#333333',
-                fontSize: 12,
-                fontFamily: '"Microsoft YaHei", "微软雅黑", Arial, sans-serif'
-            },
-            padding: [8, 12],
-            extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;',
-            formatter: function(params) {
-                return `<div style="font-weight: 600; margin-bottom: 8px; color: #005BAC;">${params.name}</div>
-                        <div style="display: flex; align-items: center; margin: 4px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; background: ${params.color}; border-radius: 50%; margin-right: 8px;"></span>
-                            库存量: <strong>${(params.value / 1000).toFixed(1)}K吨</strong>
-                        </div>
-                        <div style="color: #666666; font-size: 11px; margin-top: 4px;">占比: ${params.percent}%</div>`;
-            }
+            formatter: '{a} <br/>{b}: {c}T ({d}%)'
         },
         legend: {
             orient: 'vertical',
             left: 'left',
-            top: 'center',
             textStyle: {
-                fontSize: 11,
+                fontSize: 12,
                 color: '#666666'
-            },
-            formatter: function(name) {
-                return name.length > 8 ? name.substring(0, 8) + '...' : name;
             }
         },
         series: [
@@ -2851,29 +2829,21 @@ function initInventoryPieChart() {
                 name: '库存分布',
                 type: 'pie',
                 radius: ['40%', '70%'],
-                center: ['65%', '50%'],
                 avoidLabelOverlap: false,
                 itemStyle: {
-                    borderRadius: 8,
+                    borderRadius: 10,
                     borderColor: '#fff',
                     borderWidth: 2
                 },
                 label: {
-                    show: false
+                    show: false,
+                    position: 'center'
                 },
                 emphasis: {
                     label: {
                         show: true,
-                        fontSize: '14',
-                        fontWeight: 'bold',
-                        formatter: function(params) {
-                            return `${params.name}\n${params.percent}%`;
-                        }
-                    },
-                    itemStyle: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        fontSize: '18',
+                        fontWeight: 'bold'
                     }
                 },
                 labelLine: {
@@ -2881,16 +2851,10 @@ function initInventoryPieChart() {
                 },
                 data: []
             }
-        ],
-        color: [
-            '#005BAC', '#49A9E8', '#D92E2E', '#34c759', '#ff9500',
-            '#007AFF', '#5856D6', '#AF52DE', '#FF2D92', '#FF3B30',
-            '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#32D74B'
         ]
     };
 
     inventoryPieChart.setOption(option);
-    console.log('✅ Inventory pie chart initialized');
 }
 
 // 更新库存占比饼图数据
@@ -3014,65 +2978,44 @@ function initProductionRatioTrendChart() {
             data: [],
             lineStyle: {
                 color: function(params) {
-                    return '#005BAC';
+                    return params.value >= 100 ? '#34c759' : '#ff9500';
                 },
-                width: 3,
-                shadowColor: 'rgba(0, 91, 172, 0.3)',
-                shadowBlur: 6,
-                shadowOffsetY: 2
+                width: 3
             },
-            itemStyle: {
-                color: function(params) {
-                    const ratio = params.value;
-                    return ratio >= 100 ? '#34c759' : '#ff9500';
-                },
-                borderWidth: 3,
-                borderColor: '#ffffff',
-                shadowColor: 'rgba(0, 91, 172, 0.4)',
-                shadowBlur: 8
-            },
-            symbol: 'circle',
-            symbolSize: 8,
-            smooth: true,
-            // 添加100%基准线
             markLine: {
                 silent: true,
                 lineStyle: {
-                    color: '#D92E2E',
-                    type: 'solid',
-                    width: 2,
-                    opacity: 0.8
+                    color: '#005BAC',
+                    type: 'dashed',
+                    width: 2
                 },
                 label: {
+                    show: true,
                     position: 'end',
-                    color: '#D92E2E',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    formatter: '100%基准线'
+                    formatter: '基准线 100%',
+                    color: '#005BAC',
+                    fontSize: 12
                 },
                 data: [
                     {
                         yAxis: 100,
-                        name: '100%基准线'
+                        name: '基准线'
                     }
                 ]
             },
-            // 添加区域标识
             markArea: {
                 silent: true,
+                itemStyle: {
+                    color: 'rgba(52, 199, 89, 0.1)'
+                },
                 data: [
                     [
                         {
                             yAxis: 100,
-                            itemStyle: {
-                                color: 'rgba(52, 199, 89, 0.1)'
-                            }
+                            name: '库存消耗区间'
                         },
                         {
-                            yAxis: 'max',
-                            itemStyle: {
-                                color: 'rgba(52, 199, 89, 0.1)'
-                            }
+                            yAxis: 'max'
                         }
                     ]
                 ]
@@ -3128,3 +3071,58 @@ window.initInventoryPieChart = initInventoryPieChart;
 window.updateInventoryPieChart = updateInventoryPieChart;
 window.initProductionRatioTrendChart = initProductionRatioTrendChart;
 window.updateProductionRatioTrendChart = updateProductionRatioTrendChart;
+
+// --- 新增函数：统一更新库存分析数据 ---
+
+/**
+ * 异步获取并更新所有库存分析相关数据
+ * @param {string} date - YYYY-MM-DD格式的日期
+ */
+async function updateInventoryAnalytics(date) {
+    console.log(`📊 Updating all inventory analytics for date: ${date}`);
+    
+    // 1. 更新指标卡片
+    try {
+        const summaryData = await fetchData(`/api/inventory/summary?date=${date}`);
+        if (summaryData) {
+            const totalInventoryEl = document.getElementById('total-inventory');
+            const top15TotalEl = document.getElementById('top15-total');
+            const top15PercentageEl = document.getElementById('top15-percentage');
+
+            if (totalInventoryEl) totalInventoryEl.textContent = (summaryData.total_inventory / 1000).toFixed(1) + 'K';
+            if (top15TotalEl) top15TotalEl.textContent = (summaryData.top15_total / 1000).toFixed(1) + 'K';
+            if (top15PercentageEl) top15PercentageEl.textContent = summaryData.top15_percentage.toFixed(1) + '%';
+            
+            console.log('✅ Inventory summary cards updated.');
+        }
+    } catch (error) {
+        console.error('❌ Failed to update inventory summary cards:', error);
+    }
+
+    // 2. 更新库存占比饼图
+    if (inventoryPieChart) {
+        try {
+            inventoryPieChart.showLoading();
+            const distributionData = await fetchData(`/api/inventory/distribution?date=${date}`);
+            inventoryPieChart.hideLoading();
+
+            if (distributionData && Array.isArray(distributionData)) {
+                inventoryPieChart.setOption({
+                    series: [{
+                        data: distributionData.map(item => ({
+                            name: item.product_name,
+                            value: item.inventory_level
+                        }))
+                    }]
+                });
+                console.log('✅ Inventory distribution pie chart updated.');
+            }
+        } catch (error) {
+            console.error('❌ Failed to update inventory distribution pie chart:', error);
+            if (inventoryPieChart) inventoryPieChart.hideLoading();
+        }
+    }
+}
+
+// 导出新函数以供全局调用（如果需要）
+window.updateInventoryAnalytics = updateInventoryAnalytics;

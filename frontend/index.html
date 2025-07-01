@@ -258,7 +258,7 @@
 
                         <div class="analysis-summary">
                             <h4>趋势分析结论</h4>
-                            <p>销售量呈现稳定增长态势，价格波动相对温和。双轴分析显示销量与价格的变化趋势，反映市场供需动态。建议关注价格敏感期的销量变化，优化定价策略。</p>
+                            <p>销售量呈现稳定增长态势，价格波动相对温和。双轴分析显示了详细的趋势，反映了市场供需动态。建议关注价格敏感期的销量变化，优化定价策略。</p>
                         </div>
 
                         <div class="charts-grid full-width">
@@ -284,7 +284,7 @@
                                         <th>销售量(吨)</th>
                                         <th>平均价格(元/吨)</th>
                                         <th>销售额(万元)</th>
-                                        <th>销量环比变化</th>
+                                        <th title="与上一统计周期的销量对比变化率">销量环比变化</th>
                                     </tr>
                                 </thead>
                                 <tbody id="sales-price-table-body">
@@ -486,39 +486,19 @@
                             <div class="metric-number" id="top15-percentage">--%</div>
                             <div class="metric-label">TOP15占比</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-number" id="product-count">--</div>
-                            <div class="metric-label">产品种类数</div>
-                        </div>
                     </div>
 
                     <!-- 库存分析图表区域 -->
                     <div class="inventory-charts-container">
                         <div class="chart-left">
-                            <div class="chart-container professional">
-                                <div class="chart-header">
-                                    <div class="chart-title-group">
-                                        <div class="chart-icon">📊</div>
-                                        <div>
-                                            <h3 class="chart-title">库存TOP15产品</h3>
-                                            <p class="chart-subtitle">按当前库存量排序</p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="chart-container">
+                                <h3>库存TOP15产品</h3>
                                 <div id="inventory-top-chart" class="chart"></div>
                             </div>
                         </div>
                         <div class="chart-right">
-                            <div class="chart-container professional">
-                                <div class="chart-header">
-                                    <div class="chart-title-group">
-                                        <div class="chart-icon">🥧</div>
-                                        <div>
-                                            <h3 class="chart-title">库存占比分布</h3>
-                                            <p class="chart-subtitle">TOP15产品占比</p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="chart-container">
+                                <h3>库存占比分布</h3>
                                 <div id="inventory-pie-chart" class="chart"></div>
                             </div>
                         </div>
@@ -526,21 +506,11 @@
 
                     <!-- 产销率分析区域 -->
                     <div class="production-ratio-section">
-                        <div class="chart-container professional">
-                            <div class="chart-header">
-                                <div class="chart-title-group">
-                                    <div class="chart-icon">🎯</div>
-                                    <div>
-                                        <h3 class="chart-title">产销率趋势分析</h3>
-                                        <p class="chart-subtitle">每日产销率变化（100%为基准线）</p>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="chart-container">
+                            <h3>产销率趋势分析</h3>
                             <div id="production-ratio-trend-chart" class="chart"></div>
                         </div>
                     </div>
-
-
                 </div>
 
                 <!-- 产销率分析 -->

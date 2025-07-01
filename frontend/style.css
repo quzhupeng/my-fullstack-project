@@ -1770,3 +1770,106 @@ body {
         font-size: 13px;
     }
 }
+
+
+/* 表格紧凑化样式 (根据文档添加) */
+.data-table.compact {
+    font-size: 12px;
+}
+
+.data-table.compact th,
+.data-table.compact td {
+    padding: 6px 8px;
+    line-height: 1.3;
+}
+
+.data-table.compact tbody {
+    max-height: 300px;
+    overflow-y: auto;
+    display: block;
+}
+
+.data-table.compact thead,
+.data-table.compact tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* --- 库存模块重构样式 --- */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.metric-card {
+    background: var(--background-light);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 91, 172, 0.1);
+    border-color: var(--primary-blue);
+}
+
+.metric-card .metric-number {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-bottom: 8px;
+}
+
+.metric-card .metric-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.inventory-charts-container {
+    display: grid;
+    grid-template-columns: 7fr 5fr; /* 7:5 比例 */
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.chart-left,
+.chart-right {
+    background: var(--background-white);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-light);
+}
+
+.production-ratio-section {
+    margin-top: 32px;
+}
+
+.production-ratio-section .chart-container {
+    background: var(--background-white);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-light);
+}
+
+/* 响应式布局 */
+@media (max-width: 1024px) {
+    .inventory-charts-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
