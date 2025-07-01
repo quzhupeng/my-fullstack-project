@@ -16,6 +16,8 @@ let categoryPieChart, categoryBarChart, categoryPriceChart;
 let multiSeriesChart, inventoryTurnoverChart;
 // 价格分析图表变量
 let priceFrequencyChart, priceMajorChangesChart;
+// 库存页面图表变量
+let inventoryPieChart, productionRatioTrendChart;
 
 // --- GLOBAL API HELPER (Available immediately) ---
 async function fetchData(endpoint) {
@@ -990,6 +992,10 @@ function initializeCharts() {
         // 初始化专业级图表
         initProfessionalCharts();
 
+        // 初始化库存页面图表
+        initInventoryPieChart();
+        initProductionRatioTrendChart();
+
         // Add window resize handler to prevent chart deformation
         window.addEventListener('resize', () => {
             if (inventoryChart) inventoryChart.resize();
@@ -1004,6 +1010,15 @@ function initializeCharts() {
             if (categoryPriceChart) categoryPriceChart.resize();
             if (multiSeriesChart) multiSeriesChart.resize();
             if (inventoryTurnoverChart) inventoryTurnoverChart.resize();
+            if (categoryPriceChart) categoryPriceChart.resize();
+            if (multiSeriesChart) multiSeriesChart.resize();
+            if (inventoryTurnoverChart) inventoryTurnoverChart.resize();
+            // 库存页面图表响应式处理
+            if (inventoryPieChart) inventoryPieChart.resize();
+            if (productionRatioTrendChart) productionRatioTrendChart.resize();
+        });
+            if (inventoryPieChart) inventoryPieChart.resize();
+            if (productionRatioTrendChart) productionRatioTrendChart.resize();
         });
 
         console.log('🎨 Chart initialization complete:', {
@@ -1073,8 +1088,11 @@ function showTab(tabName) {
             if (ratioTrendChart) updateRatioTrendChart(startDate, endDate);
             break;
         case 'inventory':
-            // 库存情况页面
-            if (inventoryTrendChart) updateInventoryChart(endDate);
+            // 库存情况页面 - 加载库存总量、TOP15图表、占比饼图和产销率趋势
+            loadInventorySummary(endDate);
+            if (inventoryChart) updateInventoryChart(endDate);
+            if (inventoryPieChart) updateInventoryPieChart(endDate);
+            if (productionRatioTrendChart) updateProductionRatioTrendChart(startDate, endDate);
             break;
         case 'sales':
             // 销售情况页面
@@ -1155,6 +1173,14 @@ window.loadAllData = async function() {
         }
         if (productionRatioChart) {
             dataPromises.push(updateProductionRatioChart(startDate, endDate));
+        }
+        // 库存页面相关数据加载
+        dataPromises.push(loadInventorySummary(endDate));
+        if (inventoryPieChart) {
+            dataPromises.push(updateInventoryPieChart(endDate));
+        }
+        if (productionRatioTrendChart) {
+            dataPromises.push(updateProductionRatioTrendChart(startDate, endDate));
         }
 
         await Promise.allSettled(dataPromises);
@@ -1722,21 +1748,7 @@ function initProfessionalSalesPriceChart() {
                             shadowOffsetY: 2
                         }
                     },
-                    {
-                        type: 'text',
-                        z: 101,
-                        left: 60,
-                        top: 20,
-                        style: {
-                            text: '销量与价格\n呈负相关',
-                            textAlign: 'center',
-                            textVerticalAlign: 'middle',
-                            fill: '#ffffff',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            fontFamily: '"Microsoft YaHei", "微软雅黑", Arial, sans-serif'
-                        }
-                    },
+
                     {
                         type: 'polygon',
                         z: 99,
@@ -2828,3 +2840,362 @@ function showSuccessMessage(message) {
         }
     }, 3000);
 }
+
+// --- 库存页面相关函数 ---
+
+// 加载库存总量数据
+async function loadInventorySummary(date = '2025-06-26') {
+    try {
+        const data = await fetchData(`/api/inventory/summary?date=${date}`);
+
+        if (data) {
+            // 更新库存总量指标卡片
+            const totalInventoryEl = document.getElementById('total-inventory');
+            const top15TotalEl = document.getElementById('top15-total');
+            const top15PercentageEl = document.getElementById('top15-percentage');
+            const productCountEl = document.getElementById('product-count');
+
+            if (totalInventoryEl) {
+                totalInventoryEl.textContent = (data.total_inventory / 1000).toFixed(1) + 'K';
+            }
+            if (top15TotalEl) {
+                top15TotalEl.textContent = (data.top15_total / 1000).toFixed(1) + 'K';
+            }
+            if (top15PercentageEl) {
+                top15PercentageEl.textContent = data.top15_percentage.toFixed(1) + '%';
+            }
+            if (productCountEl) {
+                productCountEl.textContent = data.product_count;
+            }
+
+            console.log('✅ Inventory summary loaded:', data);
+        }
+    } catch (error) {
+        console.error('❌ Failed to load inventory summary:', error);
+    }
+}
+
+// 初始化库存占比饼图
+function initInventoryPieChart() {
+    const chartDom = document.getElementById('inventory-pie-chart');
+    if (!chartDom) return;
+
+    if (inventoryPieChart) inventoryPieChart.dispose();
+    inventoryPieChart = echarts.init(chartDom);
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+            borderColor: '#E0E0E0',
+            borderWidth: 1,
+            textStyle: {
+                color: '#333333',
+                fontSize: 12,
+                fontFamily: '"Microsoft YaHei", "微软雅黑", Arial, sans-serif'
+            },
+            padding: [8, 12],
+            extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;',
+            formatter: function(params) {
+                return `<div style="font-weight: 600; margin-bottom: 8px; color: #005BAC;">${params.name}</div>
+                        <div style="display: flex; align-items: center; margin: 4px 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; background: ${params.color}; border-radius: 50%; margin-right: 8px;"></span>
+                            库存量: <strong>${(params.value / 1000).toFixed(1)}K吨</strong>
+                        </div>
+                        <div style="color: #666666; font-size: 11px; margin-top: 4px;">占比: ${params.percent}%</div>`;
+            }
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            top: 'center',
+            textStyle: {
+                fontSize: 11,
+                color: '#666666'
+            },
+            formatter: function(name) {
+                return name.length > 8 ? name.substring(0, 8) + '...' : name;
+            }
+        },
+        series: [
+            {
+                name: '库存分布',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                center: ['65%', '50%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 8,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: false
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: '14',
+                        fontWeight: 'bold',
+                        formatter: function(params) {
+                            return `${params.name}\n${params.percent}%`;
+                        }
+                    },
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: []
+            }
+        ],
+        color: [
+            '#005BAC', '#49A9E8', '#D92E2E', '#34c759', '#ff9500',
+            '#007AFF', '#5856D6', '#AF52DE', '#FF2D92', '#FF3B30',
+            '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#32D74B'
+        ]
+    };
+
+    inventoryPieChart.setOption(option);
+    console.log('✅ Inventory pie chart initialized');
+}
+
+// 更新库存占比饼图数据
+async function updateInventoryPieChart(date = '2025-06-26') {
+    if (!inventoryPieChart) {
+        console.warn('⚠️ Inventory pie chart not initialized');
+        return;
+    }
+
+    try {
+        inventoryPieChart.showLoading();
+        const data = await fetchData(`/api/inventory/distribution?date=${date}&limit=15`);
+        inventoryPieChart.hideLoading();
+
+        if (!data || !Array.isArray(data)) {
+            console.warn('⚠️ No inventory distribution data received');
+            return;
+        }
+
+        console.log('🥧 Updating inventory pie chart with data:', data.length, 'items');
+
+        inventoryPieChart.setOption({
+            series: [{
+                data: data.map(item => ({
+                    name: item.product_name,
+                    value: item.inventory_level
+                }))
+            }]
+        });
+
+        console.log('✅ Inventory pie chart updated successfully');
+    } catch (error) {
+        console.error('❌ Failed to update inventory pie chart:', error);
+        if (inventoryPieChart) inventoryPieChart.hideLoading();
+    }
+}
+
+// 初始化产销率趋势图表（库存页面下方）
+function initProductionRatioTrendChart() {
+    const chartDom = document.getElementById('production-ratio-trend-chart');
+    if (!chartDom) return;
+
+    if (productionRatioTrendChart) productionRatioTrendChart.dispose();
+    productionRatioTrendChart = echarts.init(chartDom);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+            borderColor: '#E0E0E0',
+            borderWidth: 1,
+            textStyle: {
+                color: '#333333',
+                fontSize: 12,
+                fontFamily: '"Microsoft YaHei", "微软雅黑", Arial, sans-serif'
+            },
+            padding: [8, 12],
+            extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;',
+            formatter: function(params) {
+                const item = params[0];
+                const ratio = item.value;
+                const status = ratio >= 100 ? '库存消耗' : '库存积累';
+                const statusColor = ratio >= 100 ? '#34c759' : '#ff9500';
+                const statusIcon = ratio >= 100 ? '📉' : '📈';
+                return `<div style="font-weight: 600; margin-bottom: 8px; color: #005BAC;">${item.axisValue}</div>
+                        <div style="display: flex; align-items: center; margin: 4px 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; background: ${statusColor}; border-radius: 50%; margin-right: 8px;"></span>
+                            产销率: <strong style="color: ${statusColor};">${ratio ? ratio.toFixed(1) : '--'}%</strong>
+                        </div>
+                        <div style="color: ${statusColor}; font-size: 11px; margin-top: 4px;">
+                            ${statusIcon} ${status} ${ratio >= 100 ? '(销量>产量)' : '(销量<产量)'}
+                        </div>
+                        <div style="color: #666; font-size: 10px; margin-top: 4px; border-top: 1px solid #eee; padding-top: 4px;">
+                            100%为基准线：>100%表示库存消耗，<100%表示库存积累
+                        </div>`;
+            }
+        },
+        grid: {
+            left: '8%',
+            right: '8%',
+            bottom: '15%',
+            top: '15%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: [],
+            axisLine: { lineStyle: { color: '#E0E0E0', width: 1 } },
+            axisTick: { lineStyle: { color: '#E0E0E0' } },
+            axisLabel: {
+                color: '#666666',
+                fontSize: 12,
+                rotate: 45,
+                interval: 'auto',
+                formatter: function(value) {
+                    const date = new Date(value);
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '产销率 (%)',
+            nameTextStyle: {
+                color: '#005BAC',
+                fontSize: 12,
+                fontWeight: 600
+            },
+            min: 0,
+            max: function(value) {
+                return Math.max(value.max * 1.1, 120);
+            },
+            axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
+            axisTick: { lineStyle: { color: '#005BAC' } },
+            axisLabel: { color: '#666666', fontSize: 12 },
+            splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
+        },
+        series: [{
+            name: '产销率',
+            type: 'line',
+            data: [],
+            lineStyle: {
+                color: function(params) {
+                    return '#005BAC';
+                },
+                width: 3,
+                shadowColor: 'rgba(0, 91, 172, 0.3)',
+                shadowBlur: 6,
+                shadowOffsetY: 2
+            },
+            itemStyle: {
+                color: function(params) {
+                    const ratio = params.value;
+                    return ratio >= 100 ? '#34c759' : '#ff9500';
+                },
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                shadowColor: 'rgba(0, 91, 172, 0.4)',
+                shadowBlur: 8
+            },
+            symbol: 'circle',
+            symbolSize: 8,
+            smooth: true,
+            // 添加100%基准线
+            markLine: {
+                silent: true,
+                lineStyle: {
+                    color: '#D92E2E',
+                    type: 'solid',
+                    width: 2,
+                    opacity: 0.8
+                },
+                label: {
+                    position: 'end',
+                    color: '#D92E2E',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    formatter: '100%基准线'
+                },
+                data: [
+                    {
+                        yAxis: 100,
+                        name: '100%基准线'
+                    }
+                ]
+            },
+            // 添加区域标识
+            markArea: {
+                silent: true,
+                data: [
+                    [
+                        {
+                            yAxis: 100,
+                            itemStyle: {
+                                color: 'rgba(52, 199, 89, 0.1)'
+                            }
+                        },
+                        {
+                            yAxis: 'max',
+                            itemStyle: {
+                                color: 'rgba(52, 199, 89, 0.1)'
+                            }
+                        }
+                    ]
+                ]
+            }
+        }]
+    };
+
+    productionRatioTrendChart.setOption(option);
+    console.log('✅ Production ratio trend chart initialized');
+}
+
+// 更新产销率趋势图表数据
+async function updateProductionRatioTrendChart(startDate = '2025-06-01', endDate = '2025-06-26') {
+    if (!productionRatioTrendChart) {
+        console.warn('⚠️ Production ratio trend chart not initialized');
+        return;
+    }
+
+    try {
+        productionRatioTrendChart.showLoading();
+        const data = await fetchData(`/api/trends/ratio?start_date=${startDate}&end_date=${endDate}`);
+        productionRatioTrendChart.hideLoading();
+
+        if (!data || !Array.isArray(data)) {
+            console.warn('⚠️ No production ratio trend data received');
+            return;
+        }
+
+        console.log('📊 Updating production ratio trend chart with data:', data.length, 'items');
+
+        // 过滤掉null值的数据
+        const validData = data.filter(item => item.ratio !== null && item.ratio !== undefined);
+
+        productionRatioTrendChart.setOption({
+            xAxis: {
+                data: validData.map(item => item.record_date)
+            },
+            series: [{
+                data: validData.map(item => item.ratio)
+            }]
+        });
+
+        console.log('✅ Production ratio trend chart updated successfully');
+    } catch (error) {
+        console.error('❌ Failed to update production ratio trend chart:', error);
+        if (productionRatioTrendChart) productionRatioTrendChart.hideLoading();
+    }
+}
+
+// 导出库存相关函数到全局作用域
+window.loadInventorySummary = loadInventorySummary;
+window.initInventoryPieChart = initInventoryPieChart;
+window.updateInventoryPieChart = updateInventoryPieChart;
+window.initProductionRatioTrendChart = initProductionRatioTrendChart;
+window.updateProductionRatioTrendChart = updateProductionRatioTrendChart;

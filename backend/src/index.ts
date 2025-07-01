@@ -253,10 +253,26 @@ app.get('/api/inventory/top', async (c) => {
     // Use centralized filtering logic (relaxed mode for inventory)
     const filterClause = ProductFilter.getCompleteFilter(false);
 
+    // First get total inventory for percentage calculation
+    const totalPs = c.env.DB.prepare(
+      `SELECT SUM(dm.inventory_level) as total_inventory
+       FROM DailyMetrics dm
+       JOIN Products p ON dm.product_id = p.product_id
+       WHERE dm.record_date = ?1
+         AND dm.inventory_level IS NOT NULL
+         AND dm.inventory_level > 0
+         AND ${filterClause}`
+    ).bind(date);
+
+    const totalResult = await totalPs.first();
+    const totalInventory = totalResult?.total_inventory || 0;
+
     const ps = c.env.DB.prepare(
       `SELECT
          p.product_name,
-         dm.inventory_level
+         dm.inventory_level,
+         ROUND((dm.inventory_level * 100.0 / ?3), 2) as percentage,
+         ROW_NUMBER() OVER (ORDER BY dm.inventory_level DESC) as rank
        FROM DailyMetrics dm
        JOIN Products p ON dm.product_id = p.product_id
        WHERE dm.record_date = ?1
@@ -265,7 +281,114 @@ app.get('/api/inventory/top', async (c) => {
          AND ${filterClause}
        ORDER BY dm.inventory_level DESC
        LIMIT ?2`
-    ).bind(date, parseInt(limit, 10));
+    ).bind(date, parseInt(limit, 10), totalInventory);
+
+    const { results } = await ps.all();
+    return c.json(results);
+  } catch (e: any) {
+    return c.json({ error: 'Database query failed', details: e.message }, 500);
+  }
+});
+
+// Endpoint for inventory summary statistics
+app.get('/api/inventory/summary', async (c) => {
+  const { date } = c.req.query();
+
+  if (!date) {
+    return c.json({ error: 'Missing date query parameter' }, 400);
+  }
+
+  try {
+    // Use centralized filtering logic (relaxed mode for inventory)
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
+    const ps = c.env.DB.prepare(
+      `SELECT
+         SUM(dm.inventory_level) as total_inventory,
+         COUNT(DISTINCT p.product_id) as product_count
+       FROM DailyMetrics dm
+       JOIN Products p ON dm.product_id = p.product_id
+       WHERE dm.record_date = ?1
+         AND dm.inventory_level IS NOT NULL
+         AND dm.inventory_level > 0
+         AND ${filterClause}`
+    ).bind(date);
+
+    const summaryResult = await ps.first();
+
+    // Get TOP15 total
+    const top15Ps = c.env.DB.prepare(
+      `SELECT SUM(inventory_level) as top15_total
+       FROM (
+         SELECT dm.inventory_level
+         FROM DailyMetrics dm
+         JOIN Products p ON dm.product_id = p.product_id
+         WHERE dm.record_date = ?1
+           AND dm.inventory_level IS NOT NULL
+           AND dm.inventory_level > 0
+           AND ${filterClause}
+         ORDER BY dm.inventory_level DESC
+         LIMIT 15
+       )`
+    ).bind(date);
+
+    const top15Result = await top15Ps.first();
+
+    const totalInventory = summaryResult?.total_inventory || 0;
+    const top15Total = top15Result?.top15_total || 0;
+    const top15Percentage = totalInventory > 0 ? (top15Total / totalInventory * 100) : 0;
+
+    return c.json({
+      total_inventory: totalInventory,
+      top15_total: top15Total,
+      top15_percentage: Math.round(top15Percentage * 100) / 100,
+      product_count: summaryResult?.product_count || 0
+    });
+  } catch (e: any) {
+    return c.json({ error: 'Database query failed', details: e.message }, 500);
+  }
+});
+
+// Endpoint for inventory distribution (pie chart data)
+app.get('/api/inventory/distribution', async (c) => {
+  const { date, limit = '15' } = c.req.query();
+
+  if (!date) {
+    return c.json({ error: 'Missing date query parameter' }, 400);
+  }
+
+  try {
+    // Use centralized filtering logic (relaxed mode for inventory)
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
+    // Get total inventory for percentage calculation
+    const totalPs = c.env.DB.prepare(
+      `SELECT SUM(dm.inventory_level) as total_inventory
+       FROM DailyMetrics dm
+       JOIN Products p ON dm.product_id = p.product_id
+       WHERE dm.record_date = ?1
+         AND dm.inventory_level IS NOT NULL
+         AND dm.inventory_level > 0
+         AND ${filterClause}`
+    ).bind(date);
+
+    const totalResult = await totalPs.first();
+    const totalInventory = totalResult?.total_inventory || 0;
+
+    const ps = c.env.DB.prepare(
+      `SELECT
+         p.product_name,
+         dm.inventory_level,
+         ROUND((dm.inventory_level * 100.0 / ?3), 2) as percentage
+       FROM DailyMetrics dm
+       JOIN Products p ON dm.product_id = p.product_id
+       WHERE dm.record_date = ?1
+         AND dm.inventory_level IS NOT NULL
+         AND dm.inventory_level > 0
+         AND ${filterClause}
+       ORDER BY dm.inventory_level DESC
+       LIMIT ?2`
+    ).bind(date, parseInt(limit, 10), totalInventory);
 
     const { results } = await ps.all();
     return c.json(results);
@@ -328,7 +451,11 @@ app.get('/api/trends/sales-price', async (c) => {
          dm.record_date,
          SUM(dm.sales_volume) as total_sales,
          SUM(dm.sales_amount) as total_amount,
-         AVG(dm.average_price) as avg_price
+         CASE
+           WHEN SUM(dm.sales_volume) > 0
+           THEN SUM(dm.sales_amount) / SUM(dm.sales_volume)
+           ELSE 0
+         END as avg_price
        FROM DailyMetrics dm
        JOIN Products p ON dm.product_id = p.product_id
        WHERE dm.record_date BETWEEN ?1 AND ?2

@@ -75,7 +75,11 @@ def process_production_data(df_prod):
     df_processed = df_processed.groupby(['record_date', 'product_name', 'category']).agg({
         'production_volume': 'sum'
     }).reset_index()
-    
+
+    # Convert production volume from KG to tons (divide by 1000)
+    # Note: 主数量 is in KG, convert to tons for display
+    df_processed['production_volume'] = df_processed['production_volume'] / 1000
+
     return df_processed
 
 def process_sales_data(df_sales):
@@ -118,10 +122,14 @@ def process_sales_data(df_sales):
         'tax_free_amount': 'sum'
     }).reset_index()
 
+    # Convert sales volume from KG to tons (divide by 1000)
+    # Note: 主数量 is in KG, convert to tons for display
+    df_processed['sales_volume'] = df_processed['sales_volume'] / 1000
+
     # Calculate average unit price using the formula: (本币无税金额 / 主数量) * 1.09
-    # Note: Assuming 主数量 is in KG, multiply by 1000 to get price per ton
+    # Note: Since we converted sales_volume to tons, multiply by 1.09 only (not 1000)
     # Calculate this AFTER aggregation to get the correct weighted average
-    df_processed['average_price'] = (df_processed['tax_free_amount'] / df_processed['sales_volume']) * 1.09 * 1000
+    df_processed['average_price'] = (df_processed['tax_free_amount'] / (df_processed['sales_volume'] * 1000)) * 1.09 * 1000
 
     # Calculate sales amount (tax-inclusive) for display
     df_processed['sales_amount'] = df_processed['tax_free_amount'] * 1.09

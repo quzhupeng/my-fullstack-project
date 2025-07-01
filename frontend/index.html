@@ -258,7 +258,7 @@
 
                         <div class="analysis-summary">
                             <h4>趋势分析结论</h4>
-                            <p>销售量呈现稳定增长态势，价格波动相对温和。双轴分析显示销量与价格存在一定的负相关性，符合市场供需规律。建议关注价格敏感期的销量变化，优化定价策略。</p>
+                            <p>销售量呈现稳定增长态势，价格波动相对温和。双轴分析显示销量与价格的变化趋势，反映市场供需动态。建议关注价格敏感期的销量变化，优化定价策略。</p>
                         </div>
 
                         <div class="charts-grid full-width">
@@ -277,14 +277,14 @@
                         </div>
 
                         <div class="support-data-table">
-                            <table>
+                            <table class="data-table compact">
                                 <thead>
                                     <tr>
                                         <th>日期</th>
                                         <th>销售量(吨)</th>
                                         <th>平均价格(元/吨)</th>
                                         <th>销售额(万元)</th>
-                                        <th>环比变化</th>
+                                        <th>销量环比变化</th>
                                     </tr>
                                 </thead>
                                 <tbody id="sales-price-table-body">
@@ -472,62 +472,75 @@
                 <div id="inventory" class="tab-content">
                     <h2 class="section-title">库存情况分析</h2>
 
-                    <div class="filter-panel">
-                        <div class="filter-group">
-                            <label>产品类别：</label>
-                            <select>
-                                <option>全部</option>
-                                <option>冷冻食品</option>
-                                <option>冷鲜食品</option>
-                                <option>加工食品</option>
-                            </select>
-                            <label>时间范围：</label>
-                            <input type="date" value="2025-06-01">
-                            <span>至</span>
-                            <input type="date" value="2025-06-26">
-                            <button class="btn">查询</button>
+                    <!-- 库存总量指标卡片 -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-number" id="total-inventory">--</div>
+                            <div class="metric-label">库存总量 (吨)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="top15-total">--</div>
+                            <div class="metric-label">TOP15总量 (吨)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="top15-percentage">--%</div>
+                            <div class="metric-label">TOP15占比</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-number" id="product-count">--</div>
+                            <div class="metric-label">产品种类数</div>
                         </div>
                     </div>
 
-                    <div class="chart-container">
-                        <h3 style="margin-bottom: 15px; color: #1d1d1f; font-weight: 600;">库存水平趋势</h3>
-                        <div id="inventory-trend-chart" class="chart"></div>
+                    <!-- 库存分析图表区域 -->
+                    <div class="inventory-charts-container">
+                        <div class="chart-left">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">📊</div>
+                                        <div>
+                                            <h3 class="chart-title">库存TOP15产品</h3>
+                                            <p class="chart-subtitle">按当前库存量排序</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="inventory-top-chart" class="chart"></div>
+                            </div>
+                        </div>
+                        <div class="chart-right">
+                            <div class="chart-container professional">
+                                <div class="chart-header">
+                                    <div class="chart-title-group">
+                                        <div class="chart-icon">🥧</div>
+                                        <div>
+                                            <h3 class="chart-title">库存占比分布</h3>
+                                            <p class="chart-subtitle">TOP15产品占比</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="inventory-pie-chart" class="chart"></div>
+                            </div>
+                        </div>
                     </div>
 
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>产品名称</th>
-                                <th>当前库存(吨)</th>
-                                <th>安全库存(吨)</th>
-                                <th>周转天数</th>
-                                <th>库存状态</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>冷冻鸡肉块</td>
-                                <td>1,250.5</td>
-                                <td>800.0</td>
-                                <td>15.6</td>
-                                <td><span class="status-badge status-normal">正常</span></td>
-                            </tr>
-                            <tr>
-                                <td>冷鲜鸡腿</td>
-                                <td>680.2</td>
-                                <td>500.0</td>
-                                <td>12.3</td>
-                                <td><span class="status-badge status-normal">正常</span></td>
-                            </tr>
-                            <tr>
-                                <td>鸡胸肉丁</td>
-                                <td>320.8</td>
-                                <td>400.0</td>
-                                <td>8.9</td>
-                                <td><span class="status-badge status-warning">偏低</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- 产销率分析区域 -->
+                    <div class="production-ratio-section">
+                        <div class="chart-container professional">
+                            <div class="chart-header">
+                                <div class="chart-title-group">
+                                    <div class="chart-icon">🎯</div>
+                                    <div>
+                                        <h3 class="chart-title">产销率趋势分析</h3>
+                                        <p class="chart-subtitle">每日产销率变化（100%为基准线）</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="production-ratio-trend-chart" class="chart"></div>
+                        </div>
+                    </div>
+
+
                 </div>
 
                 <!-- 产销率分析 -->

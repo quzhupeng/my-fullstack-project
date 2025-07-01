@@ -226,16 +226,13 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
         elif '本币无税单价' in df.columns and '本币无税金额' in df.columns:
             # 计算含税价格: (无税金额 / 主数量) * 1.09
             df.rename(columns={'发票日期': 'record_date', '物料名称': 'product_name', '主数量': 'sales_volume'}, inplace=True)
-            df['average_price'] = (df['本币无税金额'] / df['sales_volume']) * 1.09
-            print(f"  Calculated price from 无税金额/主数量*1.09")
+            # 修复：价格单位从 元/公斤 转换为 元/吨
+            df['average_price'] = (df['本币无税金额'] / df['sales_volume']) * 1.09 * 1000
+            print(f"  Calculated price from (无税金额/主数量*1.09*1000) to get price in Yuan/Ton")
         else:
             df.rename(columns={'发票日期': 'record_date', '物料名称': 'product_name', '主数量': 'sales_volume'}, inplace=True)
             df['average_price'] = 0
             print(f"  ⚠️  No suitable price column found, using 0")
-
-        # 修复：将销量从公斤(kg)转换为吨(t)
-        if 'sales_volume' in df.columns:
-            df['sales_volume'] = df['sales_volume'] / 1000
 
     # 确保日期格式统一为 'YYYY-MM-DD'
     if 'record_date' in df.columns:
@@ -266,6 +263,15 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
             after_conversion = (df[col] == 0).sum()
             print(f"  Column '{col}': {before_conversion} NaN values, {after_conversion} zero values after conversion")
+
+    # --- 单位转换 ---
+    # 修复：将销量和产量从公斤(kg)转换为吨(t)
+    if 'sales_volume' in df.columns:
+        print("  🔧 CONVERTING: sales_volume from KG to Tons")
+        df['sales_volume'] = df['sales_volume'] / 1000
+    if 'production_volume' in df.columns:
+        print("  🔧 CONVERTING: production_volume from KG to Tons")
+        df['production_volume'] = df['production_volume'] / 1000
 
     print(f"  Final shape: {df.shape}")
     return df
