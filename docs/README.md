@@ -310,7 +310,7 @@ python -m http.server 3000
 wrangler deploy --env production
 
 # 部署前端
-wrangler pages deploy frontend --project-name=chunxue-frontend
+通过git到仓库自动配置到pages
 ```
 
 ## 开发规范

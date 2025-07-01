@@ -177,6 +177,10 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
         df.rename(columns={'单据日期': 'record_date', '物料名称': 'product_name', '主数量': 'production_volume'}, inplace=True)
         print(f"  Mapped columns: record_date, product_name, production_volume")
 
+        # 修复：将产量从公斤(kg)转换为吨(t)
+        if 'production_volume' in df.columns:
+            df['production_volume'] = df['production_volume'] / 1000
+
         # 应用生产数据过滤逻辑（参考原始Python脚本）
         df = apply_production_data_filters(df)
 
@@ -228,6 +232,10 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
             df.rename(columns={'发票日期': 'record_date', '物料名称': 'product_name', '主数量': 'sales_volume'}, inplace=True)
             df['average_price'] = 0
             print(f"  ⚠️  No suitable price column found, using 0")
+
+        # 修复：将销量从公斤(kg)转换为吨(t)
+        if 'sales_volume' in df.columns:
+            df['sales_volume'] = df['sales_volume'] / 1000
 
     # 确保日期格式统一为 'YYYY-MM-DD'
     if 'record_date' in df.columns:

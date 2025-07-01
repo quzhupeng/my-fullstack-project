@@ -154,7 +154,7 @@ app.post('/api/register', async (c) => {
   }
 
   // In a real application, you would have a database of invite codes.
-  if (inviteCode !== 'SPRING2024') {
+  if (inviteCode !== 'SPRING2025') {
     return c.json({ success: false, message: 'Invalid invite code' }, 400);
   }
 
