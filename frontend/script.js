@@ -1014,13 +1014,7 @@ function initializeCharts() {
             if (categoryPriceChart) categoryPriceChart.resize();
             if (multiSeriesChart) multiSeriesChart.resize();
             if (inventoryTurnoverChart) inventoryTurnoverChart.resize();
-            if (categoryPriceChart) categoryPriceChart.resize();
-            if (multiSeriesChart) multiSeriesChart.resize();
-            if (inventoryTurnoverChart) inventoryTurnoverChart.resize();
             // 库存页面图表响应式处理
-            if (inventoryPieChart) inventoryPieChart.resize();
-            if (productionRatioTrendChart) productionRatioTrendChart.resize();
-        });
             if (inventoryPieChart) inventoryPieChart.resize();
             if (productionRatioTrendChart) productionRatioTrendChart.resize();
         });
