@@ -1099,6 +1099,31 @@ function showTab(tabName) {
             loadPriceAdjustments();
             break;
     }
+
+    // 在切换选项卡后，延迟执行resize以确保DOM渲染完成
+    setTimeout(() => {
+        console.log(`Resizing charts for tab: ${tabName}`);
+        if (tabName === 'inventory') {
+            if (window.inventoryChart) window.inventoryChart.resize(); // inventoryTopChart
+            if (window.inventoryPieChart) window.inventoryPieChart.resize();
+            if (window.productionRatioTrendChart) window.productionRatioTrendChart.resize();
+        } else if (tabName === 'production') { // 对应“产销率分析”
+            if (window.productionRatioChart) window.productionRatioChart.resize();
+        } else if (tabName === 'sales') {
+            if (window.salesTrendChart) window.salesTrendChart.resize();
+            if (window.salesPriceChart) window.salesPriceChart.resize(); // 假设 salesDistributionChart 是 salesPriceChart
+        }
+        // 为其他包含图表的选项卡也添加resize逻辑
+        if (tabName === 'realtime') {
+            if (window.inventoryChart) window.inventoryChart.resize();
+            if (window.salesPriceChart) window.salesPriceChart.resize();
+            if (window.ratioTrendChart) window.ratioTrendChart.resize();
+        }
+        if (tabName === 'pricing') {
+            if (window.priceFrequencyChart) window.priceFrequencyChart.resize();
+            if (window.priceMajorChangesChart) window.priceMajorChangesChart.resize();
+        }
+    }, 50);
 }
 
 // Export functions to global scope immediately
