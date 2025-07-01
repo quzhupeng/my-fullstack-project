@@ -1088,7 +1088,6 @@ function showTab(tabName) {
         case 'inventory':
             // 库存情况页面 - 加载所有库存相关数据
             updateInventoryAnalytics(endDate); // 统一调用新函数
-            if (inventoryChart) updateInventoryChart(endDate); // 保留TOP15图表更新
             if (productionRatioTrendChart) updateProductionRatioTrendChart(startDate, endDate); // 保留产销率趋势更新
             break;
         case 'sales':
@@ -3121,6 +3120,11 @@ async function updateInventoryAnalytics(date) {
             console.error('❌ Failed to update inventory distribution pie chart:', error);
             if (inventoryPieChart) inventoryPieChart.hideLoading();
         }
+    }
+
+    // 3. 更新库存TOP15柱状图
+    if (inventoryChart) {
+        updateInventoryChart(date);
     }
 }
 
