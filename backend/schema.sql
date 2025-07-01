@@ -15,6 +15,7 @@ CREATE TABLE DailyMetrics (
     product_id INTEGER NOT NULL,                  -- 关联到Products表的外键
     production_volume REAL,                       -- 当日产量（单位：吨）
     sales_volume REAL,                            -- 当日销量（单位：吨）
+    sales_amount REAL,                            -- 当日销售金额（单位：元）
     inventory_level REAL,                         -- 当日终库存（单位：吨）
     average_price REAL,                           -- 当日平均售价（单位：元/吨）
     FOREIGN KEY (product_id) REFERENCES Products(product_id) -- 定义外键约束，确保数据完整性

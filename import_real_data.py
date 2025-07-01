@@ -81,29 +81,54 @@ def process_production_data(df_prod):
 def process_sales_data(df_sales):
     """Process sales data from 销售发票执行查询.xlsx"""
     print("Processing sales data...")
-    
+
     # Apply filtering
     df_sales = filter_products(df_sales, '物料名称')
-    
-    # Extract relevant columns
-    df_processed = df_sales[['发票日期', '物料名称', '主数量', '本币含税单价', '物料分类']].copy()
-    df_processed.columns = ['record_date', 'product_name', 'sales_volume', 'price_with_tax', 'category']
-    
-    # Convert date, volume, and price
+
+    # Check available columns and extract relevant ones
+    print(f"Available columns: {list(df_sales.columns)}")
+
+    # Extract relevant columns - use 本币无税金额 for sales amount calculation
+    required_columns = ['发票日期', '物料名称', '主数量', '本币无税金额', '物料分类']
+    missing_columns = [col for col in required_columns if col not in df_sales.columns]
+
+    if missing_columns:
+        print(f"Warning: Missing columns: {missing_columns}")
+        # Try alternative column names
+        if '本币无税金额' not in df_sales.columns and '无税金额' in df_sales.columns:
+            df_sales['本币无税金额'] = df_sales['无税金额']
+            print("Using '无税金额' as '本币无税金额'")
+
+    df_processed = df_sales[['发票日期', '物料名称', '主数量', '本币无税金额', '物料分类']].copy()
+    df_processed.columns = ['record_date', 'product_name', 'sales_volume', 'tax_free_amount', 'category']
+
+    # Convert date, volume, and amount
     df_processed['record_date'] = pd.to_datetime(df_processed['record_date']).dt.strftime('%Y-%m-%d')
     df_processed['sales_volume'] = pd.to_numeric(df_processed['sales_volume'], errors='coerce')
-    df_processed['price_with_tax'] = pd.to_numeric(df_processed['price_with_tax'], errors='coerce')
-    
+    df_processed['tax_free_amount'] = pd.to_numeric(df_processed['tax_free_amount'], errors='coerce')
+
     # Remove rows with missing data
-    df_processed = df_processed.dropna(subset=['record_date', 'product_name', 'sales_volume'])
+    df_processed = df_processed.dropna(subset=['record_date', 'product_name', 'sales_volume', 'tax_free_amount'])
     df_processed = df_processed[df_processed['sales_volume'] > 0]
-    
-    # Group by date and product to sum sales volumes and average prices
+    df_processed = df_processed[df_processed['tax_free_amount'] > 0]
+
+    # Group by date and product to aggregate data first
     df_processed = df_processed.groupby(['record_date', 'product_name', 'category']).agg({
         'sales_volume': 'sum',
-        'price_with_tax': 'mean'
+        'tax_free_amount': 'sum'
     }).reset_index()
-    
+
+    # Calculate average unit price using the formula: (本币无税金额 / 主数量) * 1.09
+    # Note: Assuming 主数量 is in KG, multiply by 1000 to get price per ton
+    # Calculate this AFTER aggregation to get the correct weighted average
+    df_processed['average_price'] = (df_processed['tax_free_amount'] / df_processed['sales_volume']) * 1.09 * 1000
+
+    # Calculate sales amount (tax-inclusive) for display
+    df_processed['sales_amount'] = df_processed['tax_free_amount'] * 1.09
+
+    print(f"Processed sales data: {len(df_processed)} records")
+    print(f"Date range: {df_processed['record_date'].min()} to {df_processed['record_date'].max()}")
+
     return df_processed
 
 # --- 1. Load Data using Pandas ---
@@ -199,6 +224,7 @@ try:
                 'product_id': product_mapping[row['product_name']],
                 'production_volume': None,
                 'sales_volume': None,
+                'sales_amount': None,
                 'inventory_level': row['inventory_level'],
                 'average_price': None
             })
@@ -211,11 +237,13 @@ try:
                 'product_id': product_mapping[row['product_name']],
                 'production_volume': row['production_volume'],
                 'sales_volume': None,
+                'sales_amount': None,
                 'inventory_level': None,
                 'average_price': None
             })
 
     # Process sales data
+    print(f"Sales data columns: {list(df_sales.columns)}")
     for _, row in df_sales.iterrows():
         if row['product_name'] in product_mapping:
             daily_metrics_data.append({
@@ -223,8 +251,9 @@ try:
                 'product_id': product_mapping[row['product_name']],
                 'production_volume': None,
                 'sales_volume': row['sales_volume'],
+                'sales_amount': row.get('sales_amount', row.get('tax_free_amount', 0) * 1.09),
                 'inventory_level': None,
-                'average_price': row['price_with_tax']
+                'average_price': row['average_price']
             })
 
     print(f"Prepared {len(daily_metrics_data)} daily metrics records")
@@ -234,6 +263,7 @@ try:
     combined_data = defaultdict(lambda: {
         'production_volume': 0,
         'sales_volume': 0,
+        'sales_amount': 0,
         'inventory_level': None,
         'average_price': None
     })
@@ -241,13 +271,15 @@ try:
     for record in daily_metrics_data:
         key = (record['record_date'], record['product_id'])
 
-        if record['production_volume'] is not None:
+        if record.get('production_volume') is not None:
             combined_data[key]['production_volume'] += record['production_volume']
-        if record['sales_volume'] is not None:
+        if record.get('sales_volume') is not None:
             combined_data[key]['sales_volume'] += record['sales_volume']
-        if record['inventory_level'] is not None:
+        if record.get('sales_amount') is not None:
+            combined_data[key]['sales_amount'] += record['sales_amount']
+        if record.get('inventory_level') is not None:
             combined_data[key]['inventory_level'] = record['inventory_level']
-        if record['average_price'] is not None:
+        if record.get('average_price') is not None:
             combined_data[key]['average_price'] = record['average_price']
 
     # Insert combined data
@@ -255,13 +287,14 @@ try:
     for (record_date, product_id), data in combined_data.items():
         cursor.execute("""
             INSERT INTO DailyMetrics
-            (record_date, product_id, production_volume, sales_volume, inventory_level, average_price)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (record_date, product_id, production_volume, sales_volume, sales_amount, inventory_level, average_price)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             record_date,
             product_id,
             data['production_volume'] if data['production_volume'] > 0 else None,
             data['sales_volume'] if data['sales_volume'] > 0 else None,
+            data['sales_amount'] if data['sales_amount'] > 0 else None,
             data['inventory_level'],
             data['average_price']
         ))

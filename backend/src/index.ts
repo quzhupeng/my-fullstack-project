@@ -2,6 +2,24 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import * as XLSX from 'xlsx';
 
+// Comprehensive CORS configuration
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:8080',
+  'https://my-fullstack-project.pages.dev',
+  'https://backend.qu18354531302.workers.dev',
+  'https://my-auth-worker.qu18354531302.workers.dev'
+];
+
+// CORS headers for manual handling
+const CORS_HEADERS = {
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, X-Requested-With',
+  'Access-Control-Expose-Headers': 'Content-Length, X-Requested-With',
+  'Access-Control-Max-Age': '86400',
+};
+
 // Define the bindings for Cloudflare environment variables
 type Bindings = {
   DB: D1Database;
@@ -93,19 +111,37 @@ class ProductFilter {
   }
 }
 
-// Apply CORS middleware with specific configuration
-app.use('/*', cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:8080'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Accept', 'Authorization'],
-  exposeHeaders: ['Content-Length', 'X-Requested-With'],
-  credentials: false,
-  maxAge: 86400, // 24 hours
-}));
+// Comprehensive CORS middleware that handles both preflight and actual requests
+app.use('/*', async (c, next) => {
+  const origin = c.req.header('Origin');
+  const requestMethod = c.req.method;
 
-// Add explicit OPTIONS handler for preflight requests
-app.options('/*', (c) => {
-  return c.text('', 200);
+  // Determine if origin is allowed
+  const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+  const allowOrigin = isAllowedOrigin ? origin : ALLOWED_ORIGINS[0]; // fallback to first allowed origin
+
+  // Handle preflight OPTIONS requests
+  if (requestMethod === 'OPTIONS') {
+    return c.text('', 200, {
+      'Access-Control-Allow-Origin': allowOrigin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, X-Requested-With',
+      'Access-Control-Expose-Headers': 'Content-Length, X-Requested-With',
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin'
+    });
+  }
+
+  // Process the actual request
+  await next();
+
+  // Add CORS headers to all responses
+  c.res.headers.set('Access-Control-Allow-Origin', allowOrigin);
+  c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With');
+  c.res.headers.set('Access-Control-Expose-Headers', 'Content-Length, X-Requested-With');
+  c.res.headers.set('Access-Control-Max-Age', '86400');
+  c.res.headers.set('Vary', 'Origin');
 });
 
 // --- API Endpoints ---
@@ -291,6 +327,7 @@ app.get('/api/trends/sales-price', async (c) => {
       `SELECT
          dm.record_date,
          SUM(dm.sales_volume) as total_sales,
+         SUM(dm.sales_amount) as total_amount,
          AVG(dm.average_price) as avg_price
        FROM DailyMetrics dm
        JOIN Products p ON dm.product_id = p.product_id
