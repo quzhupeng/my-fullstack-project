@@ -992,9 +992,13 @@ function initializeCharts() {
         // 初始化专业级图表
         initProfessionalCharts();
 
-        // 初始化库存页面图表
-        initInventoryPieChart();
-        initProductionRatioTrendChart();
+        // 初始化库存页面图表（仅在对应DOM元素存在时）
+        if (document.getElementById('inventory-pie-chart')) {
+            initInventoryPieChart();
+        }
+        if (document.getElementById('production-ratio-trend-chart')) {
+            initProductionRatioTrendChart();
+        }
 
         // Add window resize handler to prevent chart deformation
         window.addEventListener('resize', () => {
@@ -2041,76 +2045,7 @@ function initCategoryPriceChart() {
     categoryPriceChart.setOption(option);
 }
 
-// 初始化多指标时间序列图
-function initMultiSeriesChart() {
-    const chartDom = document.getElementById('multi-series-chart');
-    if (!chartDom) return;
 
-    if (multiSeriesChart) multiSeriesChart.dispose();
-    multiSeriesChart = echarts.init(chartDom);
-
-    const option = {
-        ...professionalTheme,
-        tooltip: {
-            trigger: 'axis',
-            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            borderColor: '#E0E0E0',
-            borderWidth: 1,
-            textStyle: {
-                color: '#333333',
-                fontSize: 12
-            },
-            padding: [8, 12],
-            extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;'
-        },
-        legend: {
-            data: ['产量', '销量', '库存'],
-            top: 15,
-            textStyle: {
-                fontSize: 12,
-                color: '#666666'
-            }
-        },
-        xAxis: {
-            type: 'category',
-            data: [] // 将通过API填充
-        },
-        yAxis: {
-            type: 'value',
-            name: '数量 (吨)',
-            nameTextStyle: {
-                color: '#005BAC',
-                fontSize: 12,
-                fontWeight: 600
-            }
-        },
-        series: [
-            {
-                name: '产量',
-                type: 'line',
-                data: [],
-                lineStyle: { color: '#005BAC', width: 2 },
-                itemStyle: { color: '#005BAC' }
-            },
-            {
-                name: '销量',
-                type: 'line',
-                data: [],
-                lineStyle: { color: '#49A9E8', width: 2 },
-                itemStyle: { color: '#49A9E8' }
-            },
-            {
-                name: '库存',
-                type: 'line',
-                data: [],
-                lineStyle: { color: '#FF9500', width: 2 },
-                itemStyle: { color: '#FF9500' }
-            }
-        ]
-    };
-
-    multiSeriesChart.setOption(option);
-}
 
 // 初始化库存周转图
 function initInventoryTurnoverChart() {
