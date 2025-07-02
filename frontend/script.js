@@ -908,99 +908,123 @@ function initializeCharts() {
     }
 
     try {
-        // 实时分析页面的图表
-        const inventoryChartElement = document.getElementById('inventory-top-chart');
-        if (inventoryChartElement) {
-            // Dispose existing chart if any
-            if (inventoryChart) {
-                inventoryChart.dispose();
-            }
-            inventoryChart = echarts.init(inventoryChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
+        // 等待CSS完全加载和容器尺寸计算完成
+        return new Promise(async (resolve) => {
+            // 首先等待样式表完全加载
+            await waitForStylesLoaded();
+
+            // 使用requestAnimationFrame确保渲染完成
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    initializeChartsInternal();
+                    resolve(true);
+                }, 150); // 额外等待150ms确保CSS应用完成
             });
-            console.log('✅ Inventory chart initialized');
-        }
+        });
+    } catch (error) {
+        console.error('❌ Chart initialization failed:', error);
+        return false;
+    }
+}
 
-        const salesPriceChartElement = document.getElementById('sales-price-chart');
-        if (salesPriceChartElement) {
-            if (salesPriceChart) {
-                salesPriceChart.dispose();
-            }
-            salesPriceChart = echarts.init(salesPriceChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
-            });
-            console.log('✅ Sales price chart initialized');
-        }
+// 内部图表初始化函数
+function initializeChartsInternal() {
+    console.log('🎨 Starting internal chart initialization...');
 
-        const ratioTrendChartElement = document.getElementById('ratio-trend-chart');
-        if (ratioTrendChartElement) {
-            if (ratioTrendChart) {
-                ratioTrendChart.dispose();
-            }
-            ratioTrendChart = echarts.init(ratioTrendChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
-            });
-            console.log('✅ Ratio trend chart initialized');
+    // 实时分析页面的图表
+    const inventoryChartElement = document.getElementById('inventory-top-chart');
+    if (inventoryChartElement && isElementVisible(inventoryChartElement)) {
+        // Dispose existing chart if any
+        if (inventoryChart) {
+            inventoryChart.dispose();
         }
+        inventoryChart = echarts.init(inventoryChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Inventory chart initialized');
+    }
 
-        // 其他页面的图表
-        const inventoryTrendChartElement = document.getElementById('inventory-trend-chart');
-        if (inventoryTrendChartElement) {
-            if (inventoryTrendChart) {
-                inventoryTrendChart.dispose();
-            }
-            inventoryTrendChart = echarts.init(inventoryTrendChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
-            });
-            console.log('✅ Inventory trend chart initialized');
+    const salesPriceChartElement = document.getElementById('sales-price-chart');
+    if (salesPriceChartElement && isElementVisible(salesPriceChartElement)) {
+        if (salesPriceChart) {
+            salesPriceChart.dispose();
         }
+        salesPriceChart = echarts.init(salesPriceChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Sales price chart initialized');
+    }
 
-        const productionRatioChartElement = document.getElementById('production-ratio-chart');
-        if (productionRatioChartElement) {
-            if (productionRatioChart) {
-                productionRatioChart.dispose();
-            }
-            productionRatioChart = echarts.init(productionRatioChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
-            });
-            console.log('✅ Production ratio chart initialized');
+    const ratioTrendChartElement = document.getElementById('ratio-trend-chart');
+    if (ratioTrendChartElement && isElementVisible(ratioTrendChartElement)) {
+        if (ratioTrendChart) {
+            ratioTrendChart.dispose();
         }
+        ratioTrendChart = echarts.init(ratioTrendChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Ratio trend chart initialized');
+    }
 
-        const salesTrendChartElement = document.getElementById('sales-trend-chart');
-        if (salesTrendChartElement) {
-            if (salesTrendChart) {
-                salesTrendChart.dispose();
-            }
-            salesTrendChart = echarts.init(salesTrendChartElement, null, {
-                width: 'auto',
-                height: 400,
-                renderer: 'canvas'
-            });
-            console.log('✅ Sales trend chart initialized');
+    // 其他页面的图表
+    const inventoryTrendChartElement = document.getElementById('inventory-trend-chart');
+    if (inventoryTrendChartElement && isElementVisible(inventoryTrendChartElement)) {
+        if (inventoryTrendChart) {
+            inventoryTrendChart.dispose();
         }
+        inventoryTrendChart = echarts.init(inventoryTrendChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Inventory trend chart initialized');
+    }
 
-        // 初始化专业级图表
-        initProfessionalCharts();
-
-        // 初始化库存页面图表（仅在对应DOM元素存在时）
-        if (document.getElementById('inventory-pie-chart')) {
-            initInventoryPieChart();
+    const productionRatioChartElement = document.getElementById('production-ratio-chart');
+    if (productionRatioChartElement && isElementVisible(productionRatioChartElement)) {
+        if (productionRatioChart) {
+            productionRatioChart.dispose();
         }
-        if (document.getElementById('production-ratio-trend-chart')) {
-            initProductionRatioTrendChart();
-        }
+        productionRatioChart = echarts.init(productionRatioChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Production ratio chart initialized');
+    }
 
-        // Add window resize handler to prevent chart deformation
+    const salesTrendChartElement = document.getElementById('sales-trend-chart');
+    if (salesTrendChartElement && isElementVisible(salesTrendChartElement)) {
+        if (salesTrendChart) {
+            salesTrendChart.dispose();
+        }
+        salesTrendChart = echarts.init(salesTrendChartElement, null, {
+            width: 'auto',
+            height: 400,
+            renderer: 'canvas'
+        });
+        console.log('✅ Sales trend chart initialized');
+    }
+
+    // 初始化专业级图表
+    initProfessionalCharts();
+
+    // 初始化库存页面图表（仅在对应DOM元素存在时）
+    if (document.getElementById('inventory-pie-chart')) {
+        initInventoryPieChart();
+    }
+    if (document.getElementById('production-ratio-trend-chart')) {
+        initProductionRatioTrendChart();
+    }
+
+    // Add window resize handler to prevent chart deformation
+    if (!window.chartResizeHandlerAdded) {
         window.addEventListener('resize', () => {
             if (inventoryChart) inventoryChart.resize();
             if (salesPriceChart) salesPriceChart.resize();
@@ -1018,26 +1042,111 @@ function initializeCharts() {
             if (inventoryPieChart) inventoryPieChart.resize();
             if (productionRatioTrendChart) productionRatioTrendChart.resize();
         });
-
-        console.log('🎨 Chart initialization complete:', {
-            inventoryChart: !!inventoryChart,
-            salesPriceChart: !!salesPriceChart,
-            ratioTrendChart: !!ratioTrendChart,
-            inventoryTrendChart: !!inventoryTrendChart,
-            productionRatioChart: !!productionRatioChart,
-            salesTrendChart: !!salesTrendChart,
-            categoryPieChart: !!categoryPieChart,
-            categoryBarChart: !!categoryBarChart,
-            categoryPriceChart: !!categoryPriceChart,
-            multiSeriesChart: !!multiSeriesChart,
-            inventoryTurnoverChart: !!inventoryTurnoverChart
-        });
-
-        return true;
-    } catch (error) {
-        console.error('❌ Chart initialization failed:', error);
-        return false;
+        window.chartResizeHandlerAdded = true;
     }
+
+    console.log('🎨 Chart initialization complete:', {
+        inventoryChart: !!inventoryChart,
+        salesPriceChart: !!salesPriceChart,
+        ratioTrendChart: !!ratioTrendChart,
+        inventoryTrendChart: !!inventoryTrendChart,
+        productionRatioChart: !!productionRatioChart,
+        salesTrendChart: !!salesTrendChart,
+        categoryPieChart: !!categoryPieChart,
+        categoryBarChart: !!categoryBarChart,
+        categoryPriceChart: !!categoryPriceChart,
+        multiSeriesChart: !!multiSeriesChart,
+        inventoryTurnoverChart: !!inventoryTurnoverChart
+    });
+}
+
+// 检查元素是否可见且有有效尺寸的辅助函数
+function isElementVisible(element) {
+    if (!element) return false;
+
+    const rect = element.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(element);
+
+    // 检查元素是否可见且有有效尺寸
+    const isVisible = rect.width > 0 && rect.height > 0 &&
+                     computedStyle.display !== 'none' &&
+                     computedStyle.visibility !== 'hidden' &&
+                     computedStyle.opacity !== '0';
+
+    if (!isVisible) {
+        console.warn(`⚠️ Element ${element.id} is not visible or has zero dimensions:`, {
+            width: rect.width,
+            height: rect.height,
+            display: computedStyle.display,
+            visibility: computedStyle.visibility,
+            opacity: computedStyle.opacity
+        });
+    }
+
+    return isVisible;
+}
+
+// 等待CSS完全加载的函数
+function waitForStylesLoaded() {
+    return new Promise((resolve) => {
+        // 检查是否所有样式表都已加载
+        const checkStylesLoaded = () => {
+            const styleSheets = Array.from(document.styleSheets);
+            const allLoaded = styleSheets.every(sheet => {
+                try {
+                    // 尝试访问cssRules来检查样式表是否已加载
+                    return sheet.cssRules !== null;
+                } catch (e) {
+                    // 如果是跨域样式表，可能会抛出异常，但这通常意味着它已加载
+                    return true;
+                }
+            });
+
+            if (allLoaded) {
+                console.log('✅ All stylesheets loaded');
+                resolve(true);
+            } else {
+                console.log('⏳ Waiting for stylesheets to load...');
+                setTimeout(checkStylesLoaded, 50);
+            }
+        };
+
+        // 如果文档已经完全加载，直接检查
+        if (document.readyState === 'complete') {
+            setTimeout(checkStylesLoaded, 10);
+        } else {
+            // 否则等待load事件
+            window.addEventListener('load', () => {
+                setTimeout(checkStylesLoaded, 10);
+            });
+        }
+    });
+}
+
+// 强制重新渲染所有图表的函数
+function forceResizeAllCharts() {
+    console.log('🔄 Force resizing all charts...');
+
+    const charts = [
+        inventoryChart, salesPriceChart, ratioTrendChart, inventoryTrendChart,
+        productionRatioChart, salesTrendChart, categoryPieChart, categoryBarChart,
+        categoryPriceChart, multiSeriesChart, inventoryTurnoverChart,
+        inventoryPieChart, productionRatioTrendChart, priceFrequencyChart,
+        priceMajorChangesChart
+    ];
+
+    charts.forEach((chart, index) => {
+        if (chart && typeof chart.resize === 'function') {
+            try {
+                chart.resize();
+                console.log(`✅ Chart ${index + 1} resized successfully`);
+            } catch (error) {
+                console.warn(`⚠️ Failed to resize chart ${index + 1}:`, error);
+            }
+        }
+    });
+
+    console.log('✅ All charts resize completed');
 }
 
 // Tab switching function
@@ -1161,16 +1270,24 @@ window.loadAllData = async function() {
         // Step 3: 初始化图表（如果还未初始化）
         console.log('🎨 Step 3: Initializing charts...');
         if (typeof window.initializeCharts === 'function') {
-            const success = window.initializeCharts();
+            let success = await window.initializeCharts();
+
+            // 如果第一次初始化失败，重试一次
+            if (!success) {
+                console.warn('⚠️ First chart initialization failed, retrying...');
+                await new Promise(resolve => setTimeout(resolve, 300));
+                success = await window.initializeCharts();
+            }
+
             if (success) {
                 console.log('✅ Step 3: Charts initialized');
             } else {
-                console.warn('⚠️ Step 3: Chart initialization failed');
+                console.warn('⚠️ Step 3: Chart initialization failed after retry');
             }
         }
 
         // Step 4: 等待图表准备好
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200));
         console.log('✅ Step 4: Charts ready');
 
         // Step 5: 加载图表数据
@@ -1206,6 +1323,12 @@ window.loadAllData = async function() {
 
         await Promise.allSettled(dataPromises);
         console.log('✅ All data loading completed');
+
+        // Step 6: 强制重新渲染所有图表以确保正确显示
+        console.log('🔄 Step 6: Force chart resize to ensure proper display...');
+        setTimeout(() => {
+            forceResizeAllCharts();
+        }, 100);
 
     } catch (error) {
         console.error('❌ Error in loadAllData:', error);

@@ -305,6 +305,11 @@ body {
     overflow: hidden;
     border: 1px solid #f0f0f0;
     transition: all 0.3s ease;
+    /* 确保图表容器在页面加载时立即可见和有正确尺寸 */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box;
 }
 
 .chart-container:hover {
@@ -468,6 +473,11 @@ body {
     min-height: 400px;
     position: relative;
     overflow: hidden;
+    /* 确保容器在初始加载时就有正确的尺寸 */
+    box-sizing: border-box;
+    display: block;
+    /* 防止容器在CSS加载前塌陷 */
+    min-width: 300px;
 }
 
 /* Ensure charts resize properly */
