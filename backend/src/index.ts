@@ -8,6 +8,7 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
   'http://localhost:8080',
   'https://my-fullstack-project.pages.dev',
+  'https://7bbead58.my-fullstack-project.pages.dev',
   'https://backend.qu18354531302.workers.dev',
   'https://my-auth-worker.qu18354531302.workers.dev'
 ];
@@ -185,7 +186,7 @@ app.post('/api/login', async (c) => {
 
   try {
     const ps = c.env.DB.prepare('SELECT * FROM Users WHERE username = ? AND password = ?').bind(username, password);
-    const user = await ps.first();
+    const user = await ps.first<{ username: string }>();
 
     if (user) {
       // In a real application, you would generate a proper JWT.
@@ -314,7 +315,7 @@ app.get('/api/inventory/summary', async (c) => {
          AND ${filterClause}`
     ).bind(date);
 
-    const summaryResult = await ps.first();
+    const summaryResult = await ps.first<{ total_inventory: number; product_count: number }>();
 
     // Get TOP15 total
     const top15Ps = c.env.DB.prepare(
@@ -332,7 +333,7 @@ app.get('/api/inventory/summary', async (c) => {
        )`
     ).bind(date);
 
-    const top15Result = await top15Ps.first();
+    const top15Result = await top15Ps.first<{ top15_total: number }>();
 
     const totalInventory = summaryResult?.total_inventory || 0;
     const top15Total = top15Result?.top15_total || 0;
@@ -625,12 +626,17 @@ app.post('/api/upload/price-adjustments', async (c) => {
 
             // Find or create product
             const productQuery = db.prepare('SELECT product_id FROM Products WHERE product_name = ?').bind(productName);
-            let productResult = await productQuery.first();
+            let productResult = await productQuery.first<{ product_id: number }>();
 
             if (!productResult) {
               const insertProduct = db.prepare('INSERT INTO Products (product_name, category) VALUES (?, ?) RETURNING product_id')
                 .bind(productName, category || null);
-              productResult = await insertProduct.first();
+              productResult = await insertProduct.first<{ product_id: number }>();
+            }
+            
+            if (!productResult) {
+              errors.push(`Failed to find or create product: ${productName}`);
+              continue;
             }
 
             const productId = productResult.product_id;
