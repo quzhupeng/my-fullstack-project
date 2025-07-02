@@ -1016,10 +1016,12 @@ function initializeChartsInternal() {
     initProfessionalCharts();
 
     // 初始化库存页面图表（仅在对应DOM元素存在时）
-    if (document.getElementById('inventory-pie-chart')) {
+    const inventoryPieElement = document.getElementById('inventory-pie-chart');
+    if (inventoryPieElement && isElementVisible(inventoryPieElement)) {
         initInventoryPieChart();
     }
-    if (document.getElementById('production-ratio-trend-chart')) {
+    const productionRatioTrendElement = document.getElementById('production-ratio-trend-chart');
+    if (productionRatioTrendElement && isElementVisible(productionRatioTrendElement)) {
         initProductionRatioTrendChart();
     }
 
@@ -1135,6 +1137,10 @@ function forceResizeAllCharts() {
         priceMajorChangesChart
     ];
 
+    // 同时更新全局变量引用
+    window.inventoryPieChart = inventoryPieChart;
+    window.productionRatioTrendChart = productionRatioTrendChart;
+
     charts.forEach((chart, index) => {
         if (chart && typeof chart.resize === 'function') {
             try {
@@ -1147,6 +1153,49 @@ function forceResizeAllCharts() {
     });
 
     console.log('✅ All charts resize completed');
+}
+
+// 专门的库存页面图表初始化函数
+async function initializeInventoryPageCharts() {
+    console.log('📊 Initializing inventory page charts...');
+
+    try {
+        // 等待DOM和CSS完全准备好
+        await waitForStylesLoaded();
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        // 初始化库存TOP15图表
+        const inventoryTopElement = document.getElementById('inventory-top-chart');
+        if (inventoryTopElement && isElementVisible(inventoryTopElement)) {
+            if (inventoryChart) inventoryChart.dispose();
+            inventoryChart = echarts.init(inventoryTopElement);
+            window.inventoryChart = inventoryChart;
+            console.log('✅ Inventory top chart initialized');
+        }
+
+        // 初始化库存饼状图
+        const inventoryPieElement = document.getElementById('inventory-pie-chart');
+        if (inventoryPieElement && isElementVisible(inventoryPieElement)) {
+            if (inventoryPieChart) inventoryPieChart.dispose();
+            inventoryPieChart = echarts.init(inventoryPieElement);
+            window.inventoryPieChart = inventoryPieChart;
+            console.log('✅ Inventory pie chart initialized');
+        }
+
+        // 初始化产销率趋势图
+        const productionRatioTrendElement = document.getElementById('production-ratio-trend-chart');
+        if (productionRatioTrendElement && isElementVisible(productionRatioTrendElement)) {
+            if (productionRatioTrendChart) productionRatioTrendChart.dispose();
+            productionRatioTrendChart = echarts.init(productionRatioTrendElement);
+            window.productionRatioTrendChart = productionRatioTrendChart;
+            console.log('✅ Production ratio trend chart initialized');
+        }
+
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to initialize inventory page charts:', error);
+        return false;
+    }
 }
 
 // Tab switching function
@@ -1195,9 +1244,31 @@ function showTab(tabName) {
             if (ratioTrendChart) updateRatioTrendChart(startDate, endDate);
             break;
         case 'inventory':
-            // 库存情况页面 - 加载所有库存相关数据
-            updateInventoryAnalytics(endDate); // 统一调用新函数
-            if (productionRatioTrendChart) updateProductionRatioTrendChart(startDate, endDate); // 保留产销率趋势更新
+            // 库存情况页面 - 使用专门的初始化函数
+            console.log('📊 Switching to inventory page...');
+
+            // 延迟执行以确保DOM完全渲染
+            setTimeout(async () => {
+                // 使用专门的库存页面图表初始化函数
+                const success = await initializeInventoryPageCharts();
+
+                if (success) {
+                    // 加载数据
+                    updateInventoryAnalytics(endDate);
+                    if (window.productionRatioTrendChart) {
+                        updateProductionRatioTrendChart(startDate, endDate);
+                    }
+
+                    // 强制调整图表大小
+                    setTimeout(() => {
+                        if (window.inventoryChart) window.inventoryChart.resize();
+                        if (window.inventoryPieChart) window.inventoryPieChart.resize();
+                        if (window.productionRatioTrendChart) window.productionRatioTrendChart.resize();
+                    }, 200);
+                } else {
+                    console.warn('⚠️ Failed to initialize inventory page charts');
+                }
+            }, 100);
             break;
         case 'sales':
             // 销售情况页面
@@ -1246,6 +1317,7 @@ window.updateProductionRatioChart = updateProductionRatioChart;
 window.updateSummaryCards = updateSummaryCards;
 window.initializeCharts = initializeCharts;
 window.showTab = showTab;
+window.initializeInventoryPageCharts = initializeInventoryPageCharts;
 
 // Define loadAllData function and export it immediately
 window.loadAllData = async function() {
@@ -2953,10 +3025,26 @@ async function loadInventorySummary(date = '2025-06-26') {
 // 初始化库存占比饼图
 function initInventoryPieChart() {
     const chartDom = document.getElementById('inventory-pie-chart');
-    if (!chartDom) return;
+    if (!chartDom) {
+        console.warn('⚠️ Inventory pie chart container not found');
+        return;
+    }
+
+    // 检查容器是否可见且有有效尺寸
+    if (!isElementVisible(chartDom)) {
+        console.warn('⚠️ Inventory pie chart container not visible, retrying...');
+        // 延迟重试
+        setTimeout(() => {
+            if (isElementVisible(chartDom)) {
+                initInventoryPieChart();
+            }
+        }, 200);
+        return;
+    }
 
     if (inventoryPieChart) inventoryPieChart.dispose();
     inventoryPieChart = echarts.init(chartDom);
+    console.log('✅ Inventory pie chart initialized');
 
     const option = {
         tooltip: {
