@@ -15,18 +15,47 @@ print("--- Starting Real Data Import Script ---")
 print("This script will import real production data into DailyMetrics table")
 
 def filter_products(df, product_col='物料名称'):
-    """Apply data filtering logic from original Python script"""
-    # Filter out fresh products (starting with '鲜') except '凤肠' products
+    """Apply comprehensive data filtering logic from original Python script"""
+    print(f"开始筛选数据，原始记录数: {len(df)}")
+
+    # 1. Filter out fresh products (starting with '鲜') except '凤肠' products
     mask = ~df[product_col].str.startswith('鲜', na=False) | df[product_col].str.contains('凤肠', na=False)
     df = df[mask]
-    
-    # Filter out by-products and empty categories
-    if '客户' in df.columns:
-        df = df[~df['客户'].isin(['副产品', '鲜品']) | df['客户'].isna()]
-    
+    print(f"排除鲜品（保留凤肠）后，剩余 {len(df)} 条记录")
+
+    # 2. Filter by customer name - exclude empty, '副产品', '鲜品'
+    if '客户名称' in df.columns:
+        original_count = len(df)
+        df['客户名称'] = df['客户名称'].fillna('').astype(str).str.strip()
+        excluded_customers = ['', '副产品', '鲜品']
+        df = df[~df['客户名称'].str.lower().isin([x.lower() for x in excluded_customers])]
+        print(f"排除客户名称为空白、副产品、鲜品后，从 {original_count} 条记录中剩余 {len(df)} 条记录")
+
+    # 3. Filter by material category - exclude empty, '副产品', '生鲜品其他'
+    if '物料分类' in df.columns:
+        original_count = len(df)
+        df['物料分类'] = df['物料分类'].fillna('').astype(str).str.strip()
+        excluded_categories = ['', '副产品', '生鲜品其他']
+        df = df[~df['物料分类'].str.lower().isin([x.lower() for x in excluded_categories])]
+        print(f"排除物料分类为空白、副产品、生鲜品其他后，从 {original_count} 条记录中剩余 {len(df)} 条记录")
+
+    # 4. Filter by material category name - exclude empty, '副产品', '生鲜品其他'
     if '物料分类名称' in df.columns:
-        df = df[~df['物料分类名称'].isin(['副产品', '生鲜品其他']) | df['物料分类名称'].isna()]
-    
+        original_count = len(df)
+        df['物料分类名称'] = df['物料分类名称'].fillna('').astype(str).str.strip()
+        excluded_categories = ['', '副产品', '生鲜品其他']
+        df = df[~df['物料分类名称'].str.lower().isin([x.lower() for x in excluded_categories])]
+        print(f"排除物料分类名称为空白、副产品、生鲜品其他后，从 {original_count} 条记录中剩余 {len(df)} 条记录")
+
+    # 5. Filter by material major category - exclude empty, '副产品'
+    if '物料大类' in df.columns:
+        original_count = len(df)
+        df['物料大类'] = df['物料大类'].fillna('').astype(str).str.strip()
+        excluded_major_categories = ['', '副产品']
+        df = df[~df['物料大类'].str.lower().isin([x.lower() for x in excluded_major_categories])]
+        print(f"排除物料大类为空白、副产品后，从 {original_count} 条记录中剩余 {len(df)} 条记录")
+
+    print(f"筛选完成，最终剩余 {len(df)} 条记录")
     return df
 
 def process_inventory_data(df_inv):

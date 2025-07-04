@@ -221,6 +221,9 @@ app.get('/api/summary', async (c) => {
   }
 
   try {
+    // Apply product filtering for accurate ratio calculation
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
     const query = `
       SELECT
         COUNT(DISTINCT p.product_id) as total_products,
@@ -230,7 +233,8 @@ app.get('/api/summary', async (c) => {
         (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as sales_to_production_ratio
       FROM DailyMetrics dm
       JOIN Products p ON dm.product_id = p.product_id
-      WHERE dm.record_date BETWEEN ? AND ?;
+      WHERE dm.record_date BETWEEN ? AND ?
+        AND ${filterClause};
     `;
     const ps = c.env.DB.prepare(query).bind(end_date, start_date, start_date, end_date);
     const data = await ps.first();
@@ -818,6 +822,53 @@ app.post('/api/upload', async (c) => {
   } catch (e: any) {
     console.error('Upload error:', e);
     return c.json({ error: 'Internal server error', details: e.message }, 500);
+  }
+});
+
+// Admin endpoint for batch data import
+app.post('/api/admin/import-batch', async (c) => {
+  try {
+    const { data } = await c.req.json();
+
+    if (!Array.isArray(data)) {
+      return c.json({ error: 'Data must be an array' }, 400);
+    }
+
+    // Prepare batch insert
+    const stmt = c.env.DB.prepare(`
+      INSERT INTO DailyMetrics (
+        record_date, product_id, production_volume, sales_volume,
+        inventory_level, average_price, sales_amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // Execute batch insert
+    const results = [];
+    for (const record of data) {
+      try {
+        const result = await stmt.bind(
+          record.record_date,
+          record.product_id,
+          record.production_volume,
+          record.sales_volume,
+          record.inventory_level,
+          record.average_price,
+          record.sales_amount
+        ).run();
+        results.push(result);
+      } catch (e: any) {
+        console.error('Insert error:', e.message);
+        // Continue with other records
+      }
+    }
+
+    return c.json({
+      success: true,
+      inserted: results.length,
+      total: data.length
+    });
+  } catch (e: any) {
+    return c.json({ error: 'Import failed', details: e.message }, 500);
   }
 });
 

@@ -2,7 +2,7 @@
 const AUTH_API_BASE_URL = 'https://backend.qu18354531302.workers.dev';
 
 // 开发模式：跳过认证（用于测试）
-const DEVELOPMENT_MODE = false;
+const DEVELOPMENT_MODE = true;
 
 // 切换登录/注册选项卡
 function switchAuthTab(tab) {
@@ -309,6 +309,33 @@ function showTab(tabId) {
     }
 }
 
+function autoLoginDemo() {
+    // 模拟一个有效的用户对象和token
+    const demoUser = {
+        username: 'dev_user',
+        avatar: 'D'
+    };
+    const demoToken = 'dev_token';
+
+    // 保存认证数据
+    saveAuthData(demoToken, demoUser);
+
+    // 更新UI
+    document.getElementById('userAvatar').textContent = demoUser.avatar;
+    document.getElementById('userInfo').textContent = demoUser.username;
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('mainContent').classList.remove('blurred');
+    document.getElementById('userBar').classList.add('show');
+
+    // 加载数据
+    console.log('🔄 Development mode: auto-login successful, loading data...');
+    setTimeout(async () => {
+        if (typeof window.loadAllData === 'function') {
+            await window.loadAllData();
+        }
+    }, 100);
+}
+
 function initializeAuth() {
     // 开发模式：直接跳过认证
     if (DEVELOPMENT_MODE) {
@@ -353,7 +380,7 @@ function initializeAuth() {
 
 
 // 页面加载完成后初始化认证系统
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔐 Initializing authentication system...');
-    initializeAuth();
-});
+// document.addEventListener('DOMContentLoaded', () => {
+//     console.log('🔐 Initializing authentication system...');
+//     initializeAuth();
+// });
