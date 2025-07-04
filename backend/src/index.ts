@@ -438,6 +438,40 @@ app.get('/api/trends/ratio', async (c) => {
   }
 });
 
+// Endpoint for production ratio statistics (avg, min, max)
+app.get('/api/production/ratio-stats', async (c) => {
+  const { start_date, end_date } = c.req.query();
+
+  if (!start_date || !end_date) {
+    return c.json({ error: 'Missing start_date or end_date query parameters' }, 400);
+  }
+
+  try {
+    // Use centralized filtering logic
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
+    const ps = c.env.DB.prepare(
+      `SELECT
+        AVG((dm.sales_volume / dm.production_volume) * 100) as avg_ratio,
+        MIN((dm.sales_volume / dm.production_volume) * 100) as min_ratio,
+        MAX((dm.sales_volume / dm.production_volume) * 100) as max_ratio
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.sales_volume IS NOT NULL
+        AND dm.production_volume IS NOT NULL
+        AND dm.sales_volume > 0
+        AND dm.production_volume > 0
+        AND ${filterClause}`
+    ).bind(start_date, end_date);
+
+    const data = await ps.first();
+    return c.json(data);
+  } catch (e: any) {
+    return c.json({ error: 'Database query failed', details: e.message }, 500);
+  }
+});
+
 // Endpoint for the dual-axis sales and price trend chart
 // Applies data filtering logic from original Python script
 app.get('/api/trends/sales-price', async (c) => {

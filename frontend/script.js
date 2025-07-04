@@ -93,16 +93,8 @@ async function loadSummaryData() {
             if (summaryRatioDetail) summaryRatioDetail.textContent = (data.sales_to_production_ratio || 0).toFixed(1) + '%';
             if (summarySalesDetail) summarySalesDetail.textContent = (data.total_sales / 1000 || 0).toFixed(1);
 
-            // 更新产销率分析页面
-            const productionAvgRatio = document.getElementById('production-avg-ratio');
-            const productionMinRatio = document.getElementById('production-min-ratio');
-            const productionMaxRatio = document.getElementById('production-max-ratio');
-
-            if (productionAvgRatio) {
-                productionAvgRatio.textContent = (data.sales_to_production_ratio || 0).toFixed(1) + '%';
-                if (productionMinRatio) productionMinRatio.textContent = ((data.sales_to_production_ratio || 0) - 15).toFixed(1) + '%';
-                if (productionMaxRatio) productionMaxRatio.textContent = ((data.sales_to_production_ratio || 0) + 20).toFixed(1) + '%';
-            }
+            // 更新产销率分析页面 - 使用专门的API获取统计数据
+            updateProductionRatioStats(startDate, endDate);
 
             // 更新销售情况页面
             const salesTotalVolume = document.getElementById('sales-total-volume');
@@ -924,6 +916,27 @@ async function updateProductionRatioChart(startDate, endDate) {
     }
 }
 
+// 更新产销率分析页面的统计数据
+async function updateProductionRatioStats(startDate, endDate) {
+    try {
+        const data = await fetchData(`/api/production/ratio-stats?start_date=${startDate}&end_date=${endDate}`);
+
+        const productionAvgRatio = document.getElementById('production-avg-ratio');
+        const productionMinRatio = document.getElementById('production-min-ratio');
+        const productionMaxRatio = document.getElementById('production-max-ratio');
+
+        if (productionAvgRatio && data) {
+            productionAvgRatio.textContent = (data.avg_ratio || 0).toFixed(1) + '%';
+            if (productionMinRatio) productionMinRatio.textContent = (data.min_ratio || 0).toFixed(1) + '%';
+            if (productionMaxRatio) productionMaxRatio.textContent = (data.max_ratio || 0).toFixed(1) + '%';
+        }
+
+        console.log('✅ Production ratio stats updated:', data);
+    } catch (error) {
+        console.error('❌ Failed to update production ratio stats:', error);
+    }
+}
+
 async function updateSummaryCards(startDate, endDate) {
     try {
         const data = await fetchData(`/api/summary?start_date=${startDate}&end_date=${endDate}`);
@@ -1557,19 +1570,28 @@ function showTab(tabName) {
             setTimeout(() => {
                 // 确保图表容器可见后再初始化
                 const chartElement = document.getElementById('production-ratio-chart');
-                if (chartElement && !productionRatioChart) {
-                    console.log('🔧 Initializing production ratio chart...');
+                if (chartElement) {
+                    console.log('🔧 Found production ratio chart element, initializing...');
+
+                    // 强制重新初始化图表
+                    if (productionRatioChart) {
+                        productionRatioChart.dispose();
+                        productionRatioChart = null;
+                    }
+
                     productionRatioChart = echarts.init(chartElement, null, {
                         width: 'auto',
                         height: 400,
                         renderer: 'canvas'
                     });
-                }
 
-                if (productionRatioChart) {
+                    console.log('✅ Production ratio chart initialized');
+
+                    // 加载数据和统计信息
                     updateProductionRatioChart(startDate, endDate);
+                    updateProductionRatioStats(startDate, endDate);
                 } else {
-                    console.warn('⚠️ Production ratio chart not available');
+                    console.warn('⚠️ Production ratio chart element not found');
                 }
             }, 100);
             break;
@@ -1670,6 +1692,7 @@ window.updateInventoryChart = updateInventoryChart;
 window.updateSalesPriceChart = updateSalesPriceChart;
 window.updateRatioTrendChart = updateRatioTrendChart;
 window.updateProductionRatioChart = updateProductionRatioChart;
+window.updateProductionRatioStats = updateProductionRatioStats;
 window.updateSummaryCards = updateSummaryCards;
 window.initializeCharts = initializeCharts;
 window.showTab = showTab;
