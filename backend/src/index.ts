@@ -448,7 +448,13 @@ app.get('/api/trends/ratio', async (c) => {
     const ps = c.env.DB.prepare(
       `SELECT
         dm.record_date,
-        (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as ratio
+        SUM(dm.sales_volume) as daily_sales,
+        SUM(dm.production_volume) as daily_production,
+        CASE
+          WHEN SUM(dm.production_volume) > 0
+          THEN (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100
+          ELSE 0
+        END as ratio
       FROM DailyMetrics dm
       JOIN Products p ON dm.product_id = p.product_id
       WHERE dm.record_date BETWEEN ?1 AND ?2
@@ -462,7 +468,17 @@ app.get('/api/trends/ratio', async (c) => {
     ).bind(start_date, end_date);
 
     const { results } = await ps.all();
-    return c.json(results);
+
+    // 处理异常值：限制产销率在合理范围内
+    const processedResults = results.map((row: any) => ({
+      record_date: row.record_date,
+      ratio: Math.min(Number(row.ratio) || 0, 200), // 限制最大产销率为200%
+      daily_sales: row.daily_sales,
+      daily_production: row.daily_production,
+      original_ratio: row.ratio // 保留原始值用于调试
+    }));
+
+    return c.json(processedResults);
   } catch (e: any) {
     return c.json({ error: 'Database query failed', details: e.message }, 500);
   }
