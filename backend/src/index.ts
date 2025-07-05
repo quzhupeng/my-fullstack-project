@@ -402,6 +402,36 @@ app.get('/api/inventory/distribution', async (c) => {
   }
 });
 
+// Endpoint for inventory trends, including inventory level and turnover days
+app.get('/api/inventory/trends', async (c) => {
+  const { start_date, end_date, product_id } = c.req.query();
+
+  if (!start_date || !end_date) {
+    return c.json({ error: 'Missing start_date or end_date query parameters' }, 400);
+  }
+  if (!product_id) {
+    return c.json({ error: 'Missing product_id query parameter' }, 400);
+  }
+
+  try {
+    const ps = c.env.DB.prepare(
+      `SELECT
+         record_date,
+         inventory_level,
+         inventory_turnover_days
+       FROM DailyMetrics
+       WHERE record_date BETWEEN ?1 AND ?2
+         AND product_id = ?3
+       ORDER BY record_date ASC`
+    ).bind(start_date, end_date, parseInt(product_id, 10));
+
+    const { results } = await ps.all();
+    return c.json(results);
+  } catch (e: any) {
+    return c.json({ error: 'Database query failed', details: e.message }, 500);
+  }
+});
+
 // Endpoint for the daily sales-to-production ratio trend chart
 // Applies data filtering logic from original Python script
 app.get('/api/trends/ratio', async (c) => {

@@ -191,22 +191,11 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
         df.rename(columns={'物料名称': 'product_name', '结存': 'inventory_level'}, inplace=True)
         print(f"  Mapped columns: product_name, inventory_level")
 
-        # 为库存数据创建多个日期记录，而不是只用一个文件修改日期
-        if 'record_date' not in df.columns:
-            print(f"  🔧 FIXING: Creating inventory records for multiple dates...")
-            # 创建从2025-06-01到2025-06-26的日期范围
-            date_range = pd.date_range(start='2025-06-01', end='2025-06-26', freq='D')
-
-            # 为每个产品创建多个日期的记录
-            expanded_records = []
-            for _, row in df.iterrows():
-                for date in date_range:
-                    new_row = row.copy()
-                    new_row['record_date'] = date.strftime('%Y-%m-%d')
-                    expanded_records.append(new_row)
-
-            df = pd.DataFrame(expanded_records)
-            print(f"  ✅ Created {len(df)} inventory records across {len(date_range)} dates")
+        # 库存数据作为期初库存，不需要扩展日期
+        # 假设 '收发存汇总表查询.xlsx' 提供的是计算周期开始前一天的期末库存
+        # 例如，如果数据从6月1日开始，这里应该是5月31日的库存
+        # 我们将在主逻辑中处理它，这里只做重命名
+        print("  ℹ️ Summary data will be used as starting inventory.")
 
     elif file_type == 'sales':
         # 应用销售数据过滤逻辑（参考原始Python脚本）
@@ -276,6 +265,45 @@ def clean_and_load_excel(file_path, file_type, sheet_name=0):
     print(f"  Final shape: {df.shape}")
     return df
 
+def calculate_inventory_turnover(df):
+    """
+    计算每个产品的每日库存周转天数。
+    公式：库存周转天数 = 当日结存库存 / 过去30天日均销售量
+    """
+    print("  🔄 Calculating inventory turnover days...")
+    if df.empty or 'sales_volume' not in df.columns or 'inventory_level' not in df.columns:
+        print("  ⚠️ Not enough data to calculate turnover days. Skipping.")
+        df['inventory_turnover_days'] = 0
+        return df
+
+    # 确保数据按产品和日期排序
+    # 如果 record_date 不是 datetime 类型，先转换
+    if not pd.api.types.is_datetime64_any_dtype(df['record_date']):
+        df['record_date'] = pd.to_datetime(df['record_date'])
+    
+    df.sort_values(by=['product_id', 'record_date'], inplace=True)
+
+    # 计算过去30天的日均销售量
+    # 使用 rolling(window=30, min_periods=1) 来处理数据开始时不足30天的情况
+    df['avg_sales_30d'] = df.groupby('product_id')['sales_volume'].transform(
+        lambda x: x.rolling(window=30, min_periods=1).mean()
+    )
+
+    # 计算库存周转天数
+    # 处理日均销量为0的情况，避免除以零
+    df['inventory_turnover_days'] = df['inventory_level'] / df['avg_sales_30d']
+    
+    # 将无穷大（由于除以零产生）和NaN值替换为0
+    df['inventory_turnover_days'].replace([np.inf, -np.inf], 0, inplace=True)
+    df.fillna({'inventory_turnover_days': 0}, inplace=True)
+
+    print(f"  ✅ Calculated inventory turnover days.")
+    
+    # 删除临时列
+    df.drop(columns=['avg_sales_30d'], inplace=True)
+    
+    return df
+
 def main():
     # --- 1. 读取并合并所有Excel数据 ---
     all_data_frames = {}
@@ -305,76 +333,133 @@ def main():
     product_name_to_id = products_df.set_index('product_name')['product_id'].to_dict()
 
     # --- 3. 准备每日指标数据并关联产品ID ---
-    print("Preparing daily metrics data...")
-    # 收集所有日期和产品组合
-    all_dates = set()
-    for df_key, df in all_data_frames.items():
-        if 'record_date' in df.columns:
-            dates_in_file = df['record_date'].unique()
-            all_dates.update(dates_in_file)
-            print(f"  {df_key} file has {len(dates_in_file)} unique dates: {sorted(dates_in_file)[:5]}...")
+    print("Preparing daily metrics data using a production-centric merge strategy...")
 
-    print(f"  Total unique dates across all files: {len(all_dates)}")
-    print(f"  Date range: {min(all_dates)} to {max(all_dates)}")
+    # 1. 聚合生产数据 (inbound)
+    inbound_df = all_data_frames.get('inbound')
+    if inbound_df is not None and not inbound_df.empty:
+        production_daily = inbound_df.groupby(['record_date', 'product_name'])['production_volume'].sum().reset_index()
+        print(f"  Aggregated production data: {production_daily.shape[0]} records")
+    else:
+        production_daily = pd.DataFrame(columns=['record_date', 'product_name', 'production_volume'])
+        print("  No production data found.")
 
-    # 遍历每个产品和日期，尝试合并数据
-    data_to_insert = []
-    processed_combinations = 0
+    # 2. 聚合销售数据 (sales)
+    sales_df = all_data_frames.get('sales')
+    if sales_df is not None and not sales_df.empty:
+        # 计算加权平均价格所需的总金额
+        sales_df['total_amount'] = sales_df['sales_volume'] * sales_df['average_price']
+        sales_daily = sales_df.groupby(['record_date', 'product_name']).agg(
+            sales_volume=('sales_volume', 'sum'),
+            total_amount=('total_amount', 'sum')
+        ).reset_index()
+        # 计算最终的加权平均价格
+        sales_daily['average_price'] = sales_daily['total_amount'] / sales_daily['sales_volume']
+        sales_daily.drop(columns=['total_amount'], inplace=True)
+        print(f"  Aggregated sales data: {sales_daily.shape[0]} records")
+    else:
+        sales_daily = pd.DataFrame(columns=['record_date', 'product_name', 'sales_volume', 'average_price'])
+        print("  No sales data found.")
 
-    for product_name in unique_products:
-        # 获取产品ID
-        product_id = product_name_to_id.get(product_name)
-        if product_id is None:
-            print(f"Warning: Product '{product_name}' not found in Products table. Skipping.")
-            continue
+    # 3. 以生产数据为核心，合并销售数据
+    # 使用 outer join 保留所有有生产或销售的记录，后续再根据生产记录进行过滤
+    merged_df = pd.merge(
+        production_daily,
+        sales_daily,
+        on=['record_date', 'product_name'],
+        how='outer'
+    )
+    print(f"  Merged production and sales data (outer join): {merged_df.shape[0]} records")
 
-        for record_date in sorted(list(all_dates)):
-            production_volume = 0
-            sales_volume = 0
-            inventory_level = 0
-            average_price = 0
+    # 关键修复：只保留有生产记录的数据行
+    # 过滤掉 production_volume 为 NaN 或 0 的情况
+    final_metrics_df = merged_df[merged_df['production_volume'].notna() & (merged_df['production_volume'] > 0)].copy()
+    print(f"  Filtered for production records only: {final_metrics_df.shape[0]} records remain")
 
-            # 从 'inbound' 文件获取生产量 (聚合同一产品同一天的数据)
-            inbound_df = all_data_frames.get('inbound')
-            if inbound_df is not None and 'record_date' in inbound_df.columns and 'product_name' in inbound_df.columns:
-                inbound_match = inbound_df[(inbound_df['record_date'] == record_date) & (inbound_df['product_name'] == product_name)]
-                if not inbound_match.empty and 'production_volume' in inbound_match.columns:
-                    production_volume = inbound_match['production_volume'].sum()  # 聚合多条记录
+    # 4. 实现动态库存计算
+    print("  🔄 Implementing dynamic inventory calculation...")
+    summary_df = all_data_frames.get('summary')
+    
+    # 准备期初库存 (前一天的结存)
+    # 将 'inventory_level' 从公斤转换为吨
+    if summary_df is not None and not summary_df.empty:
+        summary_df['inventory_level'] = summary_df['inventory_level'] / 1000
+        initial_inventory = summary_df.set_index('product_name')['inventory_level'].to_dict()
+        print(f"  Loaded {len(initial_inventory)} initial inventory records (converted to tons).")
+    else:
+        initial_inventory = {}
+        print("  ⚠️ No summary data found, starting with zero inventory.")
 
-            # 从 'sales' 文件获取销售量和均价 (聚合同一产品同一天的数据)
-            sales_df = all_data_frames.get('sales')
-            if sales_df is not None and 'record_date' in sales_df.columns and 'product_name' in sales_df.columns:
-                sales_match = sales_df[(sales_df['record_date'] == record_date) & (sales_df['product_name'] == product_name)]
-                if not sales_match.empty:
-                    if 'sales_volume' in sales_match.columns:
-                        sales_volume = sales_match['sales_volume'].sum()  # 聚合销售量
-                    if 'average_price' in sales_match.columns:
-                        # 计算加权平均价格
-                        total_amount = (sales_match['sales_volume'] * sales_match['average_price']).sum()
-                        total_volume = sales_match['sales_volume'].sum()
-                        average_price = total_amount / total_volume if total_volume > 0 else 0
+    # 确保 'record_date' 是 datetime 类型，以便排序
+    final_metrics_df['record_date'] = pd.to_datetime(final_metrics_df['record_date'])
+    final_metrics_df.sort_values(by=['product_name', 'record_date'], inplace=True)
 
-            # 从 'summary' 文件获取库存
-            summary_df = all_data_frames.get('summary')
-            if summary_df is not None and 'record_date' in summary_df.columns and 'product_name' in summary_df.columns:
-                summary_match = summary_df[(summary_df['record_date'] == record_date) & (summary_df['product_name'] == product_name)]
-                if not summary_match.empty and 'inventory_level' in summary_match.columns:
-                    inventory_level = summary_match['inventory_level'].iloc[0]  # 库存通常是期末余额
+    # 填充NaN值为0，以便计算
+    final_metrics_df.fillna({'production_volume': 0, 'sales_volume': 0}, inplace=True)
 
-            # 只有当至少有一个非零值时才插入记录
-            if production_volume > 0 or sales_volume > 0 or inventory_level > 0 or average_price > 0:
-                data_to_insert.append({
-                    'record_date': record_date,
-                    'product_id': product_id,
-                    'production_volume': production_volume,
-                    'sales_volume': sales_volume,
-                    'inventory_level': inventory_level,
-                    'average_price': average_price
-                })
-                processed_combinations += 1
+    # 按产品逐日计算库存
+    calculated_inventory = []
+    # 使用 .groupby('product_name') 确保我们按产品处理数据
+    for product_name, group in final_metrics_df.groupby('product_name'):
+        # 获取该产品的期初库存，如果不存在则为0
+        last_day_inventory = initial_inventory.get(product_name, 0)
+        
+        # 迭代该产品的每一天记录
+        for index, row in group.iterrows():
+            # 当日库存 = 昨日库存 + 当日生产 - 当日销售
+            current_inventory = last_day_inventory + row['production_volume'] - row['sales_volume']
+            calculated_inventory.append({
+                'record_date': row['record_date'],
+                'product_name': product_name,
+                'inventory_level': current_inventory
+            })
+            # 更新昨日库存为今日库存，为下一天做准备
+            last_day_inventory = current_inventory
 
-    print(f"  Created {processed_combinations} meaningful data records (non-zero values)")
-    final_metrics_df = pd.DataFrame(data_to_insert)
+    # 将计算出的库存转换为DataFrame
+    if calculated_inventory:
+        inventory_df = pd.DataFrame(calculated_inventory)
+        print(f"  ✅ Calculated {len(inventory_df)} dynamic inventory records.")
+        # 将计算出的库存合并回主DataFrame
+        final_metrics_df = pd.merge(
+            final_metrics_df,
+            inventory_df,
+            on=['record_date', 'product_name'],
+            how='left'
+        )
+        print(f"  Merged dynamic inventory data: {final_metrics_df.shape[0]} records")
+    else:
+        final_metrics_df['inventory_level'] = 0
+        print("  No inventory calculated, setting inventory_level to 0.")
+
+
+    # 5. 关联产品ID并填充缺失值
+    final_metrics_df['product_id'] = final_metrics_df['product_name'].map(product_name_to_id)
+    
+    # 填充NaN值为0
+    fill_values = {
+        'sales_volume': 0,
+        'inventory_level': 0,
+        'average_price': 0,
+        'production_volume': 0
+    }
+    final_metrics_df.fillna(fill_values, inplace=True)
+
+    # 6. 计算库存周转天数
+    final_metrics_df = calculate_inventory_turnover(final_metrics_df)
+    
+    # 将 record_date 转回字符串格式以便写入SQL
+    if pd.api.types.is_datetime64_any_dtype(final_metrics_df['record_date']):
+        final_metrics_df['record_date'] = final_metrics_df['record_date'].dt.strftime('%Y-%m-%d')
+
+    # 筛选并重排最终列
+    final_metrics_df = final_metrics_df[[
+        'record_date', 'product_id', 'production_volume',
+        'sales_volume', 'inventory_level', 'average_price',
+        'inventory_turnover_days'
+    ]]
+    
+    print(f"  Created {len(final_metrics_df)} final data records for DailyMetrics table.")
 
     # --- 4. 从临时数据库导出为.sql文件 ---
     print(f"Dumping database to {SQL_OUTPUT_FILE}...")
@@ -405,9 +490,10 @@ def main():
                     f"{row['production_volume']},"
                     f"{row['sales_volume']},"
                     f"{row['inventory_level']},"
-                    f"{row['average_price']}"
+                    f"{row['average_price']},"
+                    f"{row['inventory_turnover_days']}"
                 )
-                f.write(f'INSERT INTO "DailyMetrics" (record_date, product_id, production_volume, sales_volume, inventory_level, average_price) VALUES ({sql_values});\n')
+                f.write(f'INSERT INTO "DailyMetrics" (record_date, product_id, production_volume, sales_volume, inventory_level, average_price, inventory_turnover_days) VALUES ({sql_values});\n')
             print(f"{len(final_metrics_df)} records written to '{DB_TABLE_METRICS}' table in SQL file.")
         else:
             print("No metrics data to write to SQL file.")

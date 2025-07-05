@@ -18,6 +18,7 @@ CREATE TABLE DailyMetrics (
     sales_amount REAL,                            -- 当日销售金额（单位：元）
     inventory_level REAL,                         -- 当日终库存（单位：吨）
     average_price REAL,                           -- 当日平均售价（单位：元/吨）
+    inventory_turnover_days REAL,                 -- 库存周转天数
     FOREIGN KEY (product_id) REFERENCES Products(product_id) -- 定义外键约束，确保数据完整性
 );
 

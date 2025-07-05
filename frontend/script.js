@@ -1651,6 +1651,20 @@ function showTab(tabName) {
             // 销售情况页面
             if (salesTrendChart) updateSalesPriceChart(startDate, endDate);
             break;
+        case 'inventory-turnover':
+            // 库存周转页面
+            console.log('📊 Switching to inventory turnover page...');
+            setTimeout(() => {
+                const chartElement = document.getElementById('inventory-turnover-chart');
+                if (chartElement) {
+                    if (!inventoryTurnoverChart) {
+                        initInventoryTurnoverChart();
+                    }
+                    // 默认加载第一个产品的周转数据
+                    updateInventoryTurnoverChart(startDate, endDate, 1);
+                }
+            }, 100);
+            break;
         case 'pricing':
             // 价格波动分析页面
             loadPriceAdjustments();
@@ -2676,7 +2690,7 @@ function initInventoryTurnoverChart() {
             extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;'
         },
         legend: {
-            data: ['库存量', '周转率'],
+            data: ['库存量', '库存周转天数'],
             top: 15,
             textStyle: {
                 fontSize: 12,
@@ -2700,7 +2714,7 @@ function initInventoryTurnoverChart() {
             },
             {
                 type: 'value',
-                name: '周转率 (%)',
+                name: '周转天数 (天)',
                 nameTextStyle: {
                     color: '#D92E2E',
                     fontSize: 12,
@@ -2723,7 +2737,7 @@ function initInventoryTurnoverChart() {
                 }
             },
             {
-                name: '周转率',
+                name: '库存周转天数',
                 type: 'line',
                 yAxisIndex: 1,
                 data: [],
@@ -2734,6 +2748,47 @@ function initInventoryTurnoverChart() {
     };
 
     inventoryTurnoverChart.setOption(option);
+}
+
+async function updateInventoryTurnoverChart(startDate, endDate, productId) {
+    if (!inventoryTurnoverChart) {
+        console.warn('⚠️ Inventory turnover chart not initialized');
+        return;
+    }
+
+    try {
+        inventoryTurnoverChart.showLoading();
+        const data = await fetchData(`/api/inventory/trends?start_date=${startDate}&end_date=${endDate}&product_id=${productId}`);
+        inventoryTurnoverChart.hideLoading();
+
+        if (!data || !Array.isArray(data)) {
+            console.warn('⚠️ No inventory turnover data received');
+            return;
+        }
+
+        console.log('🔄 Updating inventory turnover chart with data:', data.length, 'items');
+
+        inventoryTurnoverChart.setOption({
+            xAxis: {
+                data: data.map(item => item.record_date)
+            },
+            series: [
+                {
+                    name: '库存量',
+                    data: data.map(item => item.inventory_level)
+                },
+                {
+                    name: '库存周转天数',
+                    data: data.map(item => item.inventory_turnover_days)
+                }
+            ]
+        });
+
+        console.log('✅ Inventory turnover chart updated successfully');
+    } catch (error) {
+        console.error('❌ Failed to update inventory turnover chart:', error);
+        if (inventoryTurnoverChart) inventoryTurnoverChart.hideLoading();
+    }
 }
 
 // 初始化多指标时间序列图

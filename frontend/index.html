@@ -99,6 +99,7 @@
                     <button class="nav-tab" onclick="showTab('sales')">销售情况</button>
                     <button class="nav-tab" onclick="showTab('details')">详细数据</button>
                     <button class="nav-tab" onclick="showTab('pricing')">价格波动</button>
+                    <button class="nav-tab" onclick="showTab('inventory-turnover')">库存周转</button>
                     <button class="nav-tab" onclick="showTab('news')">桌创资讯</button>
                 </div>
             </div>
@@ -756,6 +757,23 @@
                             </div>
                             <p>正在处理调价数据...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 库存周转分析 -->
+                <div id="inventory-turnover" class="tab-content">
+                    <h2 class="section-title">库存周转分析</h2>
+                    <div class="chart-container professional">
+                        <div class="chart-header">
+                            <div class="chart-title-group">
+                                <div class="chart-icon">🔄</div>
+                                <div>
+                                    <h3 class="chart-title">库存周转分析</h3>
+                                    <p class="chart-subtitle">库存量与周转天数双轴图</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="inventory-turnover-chart" class="chart"></div>
                     </div>
                 </div>
 
