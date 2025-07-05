@@ -667,7 +667,13 @@ async function updateRatioTrendChart(startDate, endDate) {
                     return Math.max(value.max * 1.1, 100);
                 },
                 axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
-                axisLabel: { color: '#666666', fontSize: 12 },
+                axisLabel: {
+                    color: '#666666',
+                    fontSize: 12,
+                    formatter: function(value) {
+                        return value.toFixed(1);
+                    }
+                },
                 splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
             },
             series: [{
@@ -807,7 +813,13 @@ async function updateProductionRatioChart(startDate, endDate) {
                 },
                 axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
                 axisTick: { lineStyle: { color: '#005BAC' } },
-                axisLabel: { color: '#666666', fontSize: 12 },
+                axisLabel: {
+                    color: '#666666',
+                    fontSize: 12,
+                    formatter: function(value) {
+                        return value.toFixed(1);
+                    }
+                },
                 splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
             },
             series: [{
@@ -1688,7 +1700,13 @@ async function initializeInventoryPageCharts() {
                     },
                     axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
                     axisTick: { lineStyle: { color: '#005BAC' } },
-                    axisLabel: { color: '#666666', fontSize: 12 },
+                    axisLabel: {
+                        color: '#666666',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return value.toFixed(1);
+                        }
+                    },
                     splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
                 },
                 series: [{
@@ -3900,7 +3918,13 @@ function initProductionRatioTrendChart() {
             },
             axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
             axisTick: { lineStyle: { color: '#005BAC' } },
-            axisLabel: { color: '#666666', fontSize: 12 },
+            axisLabel: {
+                color: '#666666',
+                fontSize: 12,
+                formatter: function(value) {
+                    return value.toFixed(1);
+                }
+            },
             splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
         },
         series: [{
