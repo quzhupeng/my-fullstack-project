@@ -213,6 +213,7 @@ app.get('/api/products', async (c) => {
 });
 
 // Endpoint for the summary cards
+// Uses Python script equivalent logic for accurate ratio calculation
 app.get('/api/summary', async (c) => {
   const { start_date, end_date } = c.req.query();
 
@@ -221,25 +222,99 @@ app.get('/api/summary', async (c) => {
   }
 
   try {
-    // Apply product filtering for accurate ratio calculation
-    const filterClause = ProductFilter.getCompleteFilter(false);
+    // Calculate days between dates
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
 
-    const query = `
+    // Get total sales with Python script's exact filtering logic
+    const salesQuery = `
       SELECT
-        COUNT(DISTINCT p.product_id) as total_products,
-        CAST(JULIANDAY(?) - JULIANDAY(?) + 1 AS INTEGER) as days,
-        SUM(dm.sales_volume) as total_sales,
-        SUM(dm.production_volume) as total_production,
-        (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as sales_to_production_ratio
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.sales_volume
+          ELSE 0
+        END) as total_sales
       FROM DailyMetrics dm
       JOIN Products p ON dm.product_id = p.product_id
-      WHERE dm.record_date BETWEEN ? AND ?
-        AND ${filterClause};
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.sales_volume IS NOT NULL
+        AND dm.sales_volume > 0
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
     `;
-    const ps = c.env.DB.prepare(query).bind(end_date, start_date, start_date, end_date);
-    const data = await ps.first();
 
-    return c.json(data);
+    // Get total production with Python script's exact filtering logic
+    const productionQuery = `
+      SELECT
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.production_volume
+          ELSE 0
+        END) as total_production
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.production_volume IS NOT NULL
+        AND dm.production_volume > 0
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+    `;
+
+    // Get product count with filtering
+    const productCountQuery = `
+      SELECT COUNT(DISTINCT p.product_id) as total_products
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+    `;
+
+    const salesPs = c.env.DB.prepare(salesQuery).bind(start_date, end_date);
+    const productionPs = c.env.DB.prepare(productionQuery).bind(start_date, end_date);
+    const productCountPs = c.env.DB.prepare(productCountQuery).bind(start_date, end_date);
+
+    const salesResult = await salesPs.first<{ total_sales: number }>();
+    const productionResult = await productionPs.first<{ total_production: number }>();
+    const productCountResult = await productCountPs.first<{ total_products: number }>();
+
+    const totalSales = salesResult?.total_sales || 0;
+    const totalProduction = productionResult?.total_production || 0;
+    const totalProducts = productCountResult?.total_products || 0;
+
+    // Calculate ratio using Python script's logic
+    let salesToProductionRatio = 0;
+    if (totalProduction > 0) {
+      salesToProductionRatio = (totalSales / totalProduction) * 100;
+      // Apply Python script's ratio clipping logic (min(ratio, 500))
+      salesToProductionRatio = Math.min(salesToProductionRatio, 500);
+    }
+
+    return c.json({
+      total_products: totalProducts,
+      days: days,
+      total_sales: totalSales,
+      total_production: totalProduction,
+      sales_to_production_ratio: salesToProductionRatio,
+      calculation_method: 'Python script equivalent'
+    });
   } catch (e: any) {
     return c.json({ error: 'Database query failed', details: e.message }, 500);
   }
@@ -433,7 +508,7 @@ app.get('/api/inventory/trends', async (c) => {
 });
 
 // Endpoint for the daily sales-to-production ratio trend chart
-// Applies data filtering logic from original Python script
+// Implements the exact logic from original Python script
 app.get('/api/trends/ratio', async (c) => {
   const { start_date, end_date } = c.req.query();
 
@@ -442,49 +517,110 @@ app.get('/api/trends/ratio', async (c) => {
   }
 
   try {
-    // Use centralized filtering logic (relaxed mode for trends)
-    const filterClause = ProductFilter.getCompleteFilter(false);
-
-    const ps = c.env.DB.prepare(
-      `SELECT
-        dm.record_date,
-        SUM(dm.sales_volume) as daily_sales,
-        SUM(dm.production_volume) as daily_production,
-        CASE
-          WHEN SUM(dm.production_volume) > 0
-          THEN (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100
+    // Step 1: Get sales data with Python script's exact filtering logic
+    // Equivalent to load_sales_data() and process_sales_data() from Python script
+    const salesQuery = `
+      SELECT
+        DATE(dm.record_date) as record_date,
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.sales_volume
           ELSE 0
-        END as ratio
+        END) as daily_sales_volume
       FROM DailyMetrics dm
       JOIN Products p ON dm.product_id = p.product_id
       WHERE dm.record_date BETWEEN ?1 AND ?2
         AND dm.sales_volume IS NOT NULL
-        AND dm.production_volume IS NOT NULL
         AND dm.sales_volume > 0
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+      GROUP BY DATE(dm.record_date)
+      ORDER BY record_date ASC
+    `;
+
+    // Step 2: Get production data with Python script's exact filtering logic
+    // Equivalent to load_daily_production_data() from Python script
+    const productionQuery = `
+      SELECT
+        DATE(dm.record_date) as record_date,
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.production_volume
+          ELSE 0
+        END) as daily_production_volume
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.production_volume IS NOT NULL
         AND dm.production_volume > 0
-        AND ${filterClause}
-      GROUP BY dm.record_date
-      ORDER BY dm.record_date ASC`
-    ).bind(start_date, end_date);
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+      GROUP BY DATE(dm.record_date)
+      ORDER BY record_date ASC
+    `;
 
-    const { results } = await ps.all();
+    const salesPs = c.env.DB.prepare(salesQuery).bind(start_date, end_date);
+    const productionPs = c.env.DB.prepare(productionQuery).bind(start_date, end_date);
 
-    // 处理异常值：限制产销率在合理范围内
-    const processedResults = results.map((row: any) => ({
-      record_date: row.record_date,
-      ratio: Math.min(Number(row.ratio) || 0, 200), // 限制最大产销率为200%
-      daily_sales: row.daily_sales,
-      daily_production: row.daily_production,
-      original_ratio: row.ratio // 保留原始值用于调试
-    }));
+    const { results: salesResults } = await salesPs.all();
+    const { results: productionResults } = await productionPs.all();
 
-    return c.json(processedResults);
+    // Step 3: Combine sales and production data and calculate ratio
+    // Equivalent to main.py lines 135-146
+    const salesMap = new Map();
+    const productionMap = new Map();
+
+    salesResults.forEach((row: any) => {
+      salesMap.set(row.record_date, row.daily_sales_volume || 0);
+    });
+
+    productionResults.forEach((row: any) => {
+      productionMap.set(row.record_date, row.daily_production_volume || 0);
+    });
+
+    // Get all unique dates from both sales and production
+    const allDates = new Set([...salesMap.keys(), ...productionMap.keys()]);
+    const results = [];
+
+    for (const date of Array.from(allDates).sort()) {
+      const salesVol = salesMap.get(date) || 0;
+      const prodVol = productionMap.get(date) || 0;
+      
+      // Apply Python script's exact calculation logic
+      let ratio = 0;
+      if (prodVol > 0) {
+        ratio = (salesVol / prodVol) * 100;
+        // Apply Python script's ratio clipping logic (min(ratio, 500))
+        ratio = Math.min(ratio, 500);
+      }
+
+      results.push({
+        record_date: date,
+        daily_sales: salesVol,
+        daily_production: prodVol,
+        ratio: ratio,
+        calculation_method: 'Python script equivalent'
+      });
+    }
+
+    return c.json(results);
   } catch (e: any) {
     return c.json({ error: 'Database query failed', details: e.message }, 500);
   }
 });
 
 // Endpoint for production ratio statistics (avg, min, max)
+// Uses the same Python script equivalent logic as /api/trends/ratio
 app.get('/api/production/ratio-stats', async (c) => {
   const { start_date, end_date } = c.req.query();
 
@@ -493,27 +629,108 @@ app.get('/api/production/ratio-stats', async (c) => {
   }
 
   try {
-    // Use centralized filtering logic
-    const filterClause = ProductFilter.getCompleteFilter(false);
-
-    // 使用与实时分析页面相同的计算方式：总销售量/总产量
-    const ps = c.env.DB.prepare(
-      `SELECT
-        (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as avg_ratio,
-        MIN((dm.sales_volume / dm.production_volume) * 100) as min_ratio,
-        MAX((dm.sales_volume / dm.production_volume) * 100) as max_ratio
+    // Step 1: Get sales data with Python script's exact filtering logic
+    const salesQuery = `
+      SELECT
+        DATE(dm.record_date) as record_date,
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.sales_volume
+          ELSE 0
+        END) as daily_sales_volume
       FROM DailyMetrics dm
       JOIN Products p ON dm.product_id = p.product_id
       WHERE dm.record_date BETWEEN ?1 AND ?2
         AND dm.sales_volume IS NOT NULL
-        AND dm.production_volume IS NOT NULL
         AND dm.sales_volume > 0
-        AND dm.production_volume > 0
-        AND ${filterClause}`
-    ).bind(start_date, end_date);
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+      GROUP BY DATE(dm.record_date)
+    `;
 
-    const data = await ps.first();
-    return c.json(data);
+    // Step 2: Get production data with Python script's exact filtering logic
+    const productionQuery = `
+      SELECT
+        DATE(dm.record_date) as record_date,
+        SUM(CASE
+          WHEN p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%'
+          THEN dm.production_volume
+          ELSE 0
+        END) as daily_production_volume
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.production_volume IS NOT NULL
+        AND dm.production_volume > 0
+        -- Apply Python script's filtering logic
+        AND (
+          -- Exclude fresh products except 凤肠
+          (p.product_name NOT LIKE '鲜%' OR p.product_name LIKE '%凤肠%')
+          -- Exclude by-products and fresh categories
+          AND (p.category IS NULL OR p.category = '' OR p.category NOT IN ('副产品', '生鲜品其他'))
+        )
+      GROUP BY DATE(dm.record_date)
+    `;
+
+    const salesPs = c.env.DB.prepare(salesQuery).bind(start_date, end_date);
+    const productionPs = c.env.DB.prepare(productionQuery).bind(start_date, end_date);
+
+    const { results: salesResults } = await salesPs.all();
+    const { results: productionResults } = await productionPs.all();
+
+    // Step 3: Calculate statistics using Python script's logic
+    const salesMap = new Map();
+    const productionMap = new Map();
+
+    salesResults.forEach((row: any) => {
+      salesMap.set(row.record_date, row.daily_sales_volume || 0);
+    });
+
+    productionResults.forEach((row: any) => {
+      productionMap.set(row.record_date, row.daily_production_volume || 0);
+    });
+
+    // Calculate daily ratios with Python script's logic
+    const allDates = new Set([...salesMap.keys(), ...productionMap.keys()]);
+    const dailyRatios: number[] = [];
+    let totalSales = 0;
+    let totalProduction = 0;
+
+    for (const date of allDates) {
+      const salesVol = salesMap.get(date) || 0;
+      const prodVol = productionMap.get(date) || 0;
+      
+      totalSales += salesVol;
+      totalProduction += prodVol;
+      
+      // Calculate daily ratio with Python script's logic
+      if (prodVol > 0) {
+        let ratio = (salesVol / prodVol) * 100;
+        // Apply Python script's ratio clipping logic (min(ratio, 500))
+        ratio = Math.min(ratio, 500);
+        dailyRatios.push(ratio);
+      }
+    }
+
+    // Calculate statistics
+    const avgRatio = totalProduction > 0 ? Math.min((totalSales / totalProduction) * 100, 500) : 0;
+    const minRatio = dailyRatios.length > 0 ? Math.min(...dailyRatios) : 0;
+    const maxRatio = dailyRatios.length > 0 ? Math.max(...dailyRatios) : 0;
+
+    return c.json({
+      avg_ratio: avgRatio,
+      min_ratio: minRatio,
+      max_ratio: maxRatio,
+      calculation_method: 'Python script equivalent',
+      total_days: dailyRatios.length,
+      total_sales: totalSales,
+      total_production: totalProduction
+    });
   } catch (e: any) {
     return c.json({ error: 'Database query failed', details: e.message }, 500);
   }
