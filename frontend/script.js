@@ -1714,11 +1714,18 @@ async function initializeInventoryPageCharts() {
                     type: 'line',
                     data: [],
                     lineStyle: {
+                        color: '#005BAC',
+                        width: 3
+                    },
+                    itemStyle: {
                         color: function(params) {
                             return params.value >= 100 ? '#34c759' : '#ff9500';
                         },
-                        width: 3
+                        borderColor: '#ffffff',
+                        borderWidth: 2
                     },
+                    symbol: 'circle',
+                    symbolSize: 6,
                     markLine: {
                         silent: true,
                         lineStyle: {
@@ -1743,13 +1750,40 @@ async function initializeInventoryPageCharts() {
                     markArea: {
                         silent: true,
                         itemStyle: {
-                            color: 'rgba(52, 199, 89, 0.1)'
+                            color: 'rgba(52, 199, 89, 0.15)',
+                            borderColor: 'rgba(52, 199, 89, 0.3)',
+                            borderWidth: 1,
+                            borderType: 'dashed'
+                        },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#34c759',
+                            fontSize: 11,
+                            fontWeight: 'bold'
                         },
                         data: [
                             [
                                 {
+                                    yAxis: 0,
+                                    name: '库存积累区间',
+                                    itemStyle: {
+                                        color: 'rgba(255, 149, 0, 0.1)',
+                                        borderColor: 'rgba(255, 149, 0, 0.3)'
+                                    }
+                                },
+                                {
+                                    yAxis: 100
+                                }
+                            ],
+                            [
+                                {
                                     yAxis: 100,
-                                    name: '库存消耗区间'
+                                    name: '库存消耗区间',
+                                    itemStyle: {
+                                        color: 'rgba(52, 199, 89, 0.15)',
+                                        borderColor: 'rgba(52, 199, 89, 0.3)'
+                                    }
                                 },
                                 {
                                     yAxis: 'max'
