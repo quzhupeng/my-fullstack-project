@@ -306,6 +306,49 @@ function showTab(tabId) {
                 }
             }
         }, 150);
+    } else if (tabId === 'sales') {
+        // 销售情况页面 - 确保图表已初始化并加载数据
+        console.log('📊 Sales page activated, initializing sales trend chart...');
+        setTimeout(() => {
+            // 确保销售趋势图表容器可见后再初始化
+            const chartElement = document.getElementById('sales-trend-chart');
+            if (chartElement) {
+                console.log('🔧 Found sales trend chart element, initializing...');
+
+                // 强制重新初始化图表
+                if (window.salesTrendChart) {
+                    window.salesTrendChart.dispose();
+                    window.salesTrendChart = null;
+                }
+
+                window.salesTrendChart = echarts.init(chartElement, null, {
+                    width: 'auto',
+                    height: 400,
+                    renderer: 'canvas'
+                });
+
+                console.log('✅ Sales trend chart initialized');
+
+                // 加载数据
+                const startDate = document.getElementById('start-date')?.value || '2025-06-01';
+                const endDate = document.getElementById('end-date')?.value || '2025-06-26';
+                
+                if (typeof window.updateSalesTrendChart === 'function') {
+                    window.updateSalesTrendChart(startDate, endDate);
+                } else {
+                    console.warn('⚠️ updateSalesTrendChart function not available');
+                }
+            } else {
+                console.warn('⚠️ Sales trend chart element not found');
+            }
+
+            // 同时更新销售价格图表（如果存在）
+            if (window.salesPriceChart && typeof window.updateSalesPriceChart === 'function') {
+                const startDate = document.getElementById('start-date')?.value || '2025-06-01';
+                const endDate = document.getElementById('end-date')?.value || '2025-06-26';
+                window.updateSalesPriceChart(startDate, endDate);
+            }
+        }, 100);
     }
 }
 

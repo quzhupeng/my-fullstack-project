@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强型数据质量报告</title>
+    <style>
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e0e0e0; }
+        .grade { font-size: 48px; font-weight: bold; margin: 10px 0; }
+        .grade.A { color: #4CAF50; } .grade.B { color: #8BC34A; } .grade.C { color: #FFC107; } .grade.D { color: #FF9800; } .grade.F { color: #F44336; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0; }
+        .metric-card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }
+        .metric-title { font-weight: bold; color: #333; margin-bottom: 10px; }
+        .metric-score { font-size: 24px; font-weight: bold; color: #007bff; }
+        .issues-section { margin: 30px 0; }
+        .issue-item { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 10px 0; }
+        .issue-critical { border-left: 4px solid #F44336; } .issue-high { border-left: 4px solid #FF9800; }
+        .issue-medium { border-left: 4px solid #FFC107; } .issue-low { border-left: 4px solid #4CAF50; }
+        .recommendations { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .alert-critical { background: #ffebee; border: 1px solid #f44336; }
+        .alert-warning { background: #fff3e0; border: 1px solid #ff9800; }
+        .alert-normal { background: #e8f5e8; border: 1px solid #4caf50; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 增强型数据质量监控报告</h1>
+            <div class="grade B">B+</div>
+            <p>总体评分: <strong>92.1%</strong></p>
+            <p>生成时间: 2025-07-05T16:18:04.666695</p>
+            <p>告警级别: <span class="alert-critical">严重</span></p>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-title">📊 完整性</div>
+                <div class="metric-score">80.4%</div>
+                <small>权重: 25%</small>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">🎯 准确性</div>
+                <div class="metric-score">94.3%</div>
+                <small>权重: 40%</small>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">🔄 一致性</div>
+                <div class="metric-score">97.0%</div>
+                <small>权重: 25%</small>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">✔️ 有效性</div>
+                <div class="metric-score">100.0%</div>
+                <small>权重: 10%</small>
+            </div>
+        </div>
+        
+        <div class="issues-section">
+            <h2>📋 质量问题详情 (13 个问题)</h2>
+            
+            <div class="issue-item issue-low">
+                <strong>missing_required_data</strong> - LOW
+                <p>必填字段 '物料名称' 有 1 个空值 (0.0%)</p>
+                <small>表: sales | 列: 物料名称 | 影响记录: 1</small>
+                <p><em>建议: 检查 物料名称 字段的数据录入流程，确保必填字段完整性</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>value_out_of_range</strong> - LOW
+                <p>列 '主数量' 有 224 个值超出合理范围 [0, 1000000]</p>
+                <small>表: sales | 列: 主数量 | 影响记录: 224</small>
+                <p><em>建议: 检查 主数量 列的数据录入，确保值在合理范围内</em></p>
+            </div>
+            
+            <div class="issue-item issue-critical">
+                <strong>business_rule_violation</strong> - CRITICAL
+                <p>发现 4182 个应被过滤的 '鲜' 类产品</p>
+                <small>表: sales | 列: 物料名称 | 影响记录: 4182</small>
+                <p><em>建议: 检查产品过滤规则，确保 '鲜' 类产品被正确处理</em></p>
+            </div>
+            
+            <div class="issue-item issue-critical">
+                <strong>duplicate_records</strong> - CRITICAL
+                <p>发现 5814 条重复记录 (22.2%)</p>
+                <small>表: sales | 列: all | 影响记录: 5814</small>
+                <p><em>建议: 删除重复记录或检查数据录入流程</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>missing_required_data</strong> - LOW
+                <p>必填字段 '物料名称' 有 1 个空值 (0.2%)</p>
+                <small>表: inventory | 列: 物料名称 | 影响记录: 1</small>
+                <p><em>建议: 检查 物料名称 字段的数据录入流程，确保必填字段完整性</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>value_out_of_range</strong> - LOW
+                <p>列 '入库' 有 8 个值超出合理范围 [0, 1000000]</p>
+                <small>表: inventory | 列: 入库 | 影响记录: 8</small>
+                <p><em>建议: 检查 入库 列的数据录入，确保值在合理范围内</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>value_out_of_range</strong> - LOW
+                <p>列 '出库' 有 2 个值超出合理范围 [0, 1000000]</p>
+                <small>表: inventory | 列: 出库 | 影响记录: 2</small>
+                <p><em>建议: 检查 出库 列的数据录入，确保值在合理范围内</em></p>
+            </div>
+            
+            <div class="issue-item issue-critical">
+                <strong>business_rule_violation</strong> - CRITICAL
+                <p>发现 114 个应被过滤的 '鲜' 类产品</p>
+                <small>表: inventory | 列: 物料名称 | 影响记录: 114</small>
+                <p><em>建议: 检查产品过滤规则，确保 '鲜' 类产品被正确处理</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>missing_required_data</strong> - LOW
+                <p>必填字段 '物料名称' 有 1 个空值 (0.0%)</p>
+                <small>表: production | 列: 物料名称 | 影响记录: 1</small>
+                <p><em>建议: 检查 物料名称 字段的数据录入流程，确保必填字段完整性</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>missing_required_data</strong> - LOW
+                <p>必填字段 '主数量' 有 165 个空值 (0.5%)</p>
+                <small>表: production | 列: 主数量 | 影响记录: 165</small>
+                <p><em>建议: 检查 主数量 字段的数据录入流程，确保必填字段完整性</em></p>
+            </div>
+            
+            <div class="issue-item issue-high">
+                <strong>value_out_of_range</strong> - HIGH
+                <p>列 '主数量' 有 3850 个值超出合理范围 [0, 1000000]</p>
+                <small>表: production | 列: 主数量 | 影响记录: 3850</small>
+                <p><em>建议: 检查 主数量 列的数据录入，确保值在合理范围内</em></p>
+            </div>
+            
+            <div class="issue-item issue-critical">
+                <strong>business_rule_violation</strong> - CRITICAL
+                <p>发现 8761 个应被过滤的 '鲜' 类产品</p>
+                <small>表: production | 列: 物料名称 | 影响记录: 8761</small>
+                <p><em>建议: 检查产品过滤规则，确保 '鲜' 类产品被正确处理</em></p>
+            </div>
+            
+            <div class="issue-item issue-low">
+                <strong>duplicate_records</strong> - LOW
+                <p>发现 49 条重复记录 (0.2%)</p>
+                <small>表: production | 列: all | 影响记录: 49</small>
+                <p><em>建议: 删除重复记录或检查数据录入流程</em></p>
+            </div>
+            
+        </div>
+        
+        <div class="recommendations">
+            <h2>💡 智能建议</h2>
+            <ul><li>✅ 数据质量良好，建议继续保持并优化细节问题</li><li>📝 发现必填字段缺失，建议在数据录入界面增加必填验证</li><li>📏 发现数值超出合理范围，建议设置数据录入的范围限制</li><li>🔍 发现重复记录，建议实施去重策略和唯一性约束</li><li>📈 统计异常检测发现离群值，建议检查数据录入的准确性</li><li>🔧 发现 9 个可自动修复的问题，建议启用自动修复功能</li></ul>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666;">
+            <small>报告ID: EQR_20250705_161804 | 处理时间: 7.19秒</small>
+        </div>
+    </div>
+</body>
+</html>
+        

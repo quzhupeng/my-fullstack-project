@@ -93,19 +93,13 @@ async function loadSummaryData() {
             if (summaryRatioDetail) summaryRatioDetail.textContent = (data.sales_to_production_ratio || 0).toFixed(1) + '%';
             if (summarySalesDetail) summarySalesDetail.textContent = (data.total_sales / 1000 || 0).toFixed(1);
 
-            // 更新产销率分析页面 - 使用专门的API获取统计数据
+            // 更新产销率分析页面 - 修复：使用正确的日期变量
+            const startDate = '2025-06-01';
+            const endDate = '2025-06-26';
             updateProductionRatioStats(startDate, endDate);
 
-            // 更新销售情况页面
-            const salesTotalVolume = document.getElementById('sales-total-volume');
-            const salesAvgDaily = document.getElementById('sales-avg-daily');
-            const salesPeakDay = document.getElementById('sales-peak-day');
-
-            if (salesTotalVolume) {
-                salesTotalVolume.textContent = (data.total_sales / 1000 || 0).toFixed(1);
-                if (salesAvgDaily) salesAvgDaily.textContent = (data.total_sales / 1000 / (data.days || 1) || 0).toFixed(1);
-                if (salesPeakDay) salesPeakDay.textContent = (data.total_sales / 1000 / (data.days || 1) * 1.5 || 0).toFixed(1);
-            }
+            // 更新销售情况页面 - 使用独立函数
+            updateSalesSituation(data);
 
             // 更新实时分析页面的卡片
             const cardTotalProducts = document.getElementById('card-total-products');
@@ -918,22 +912,251 @@ async function updateProductionRatioChart(startDate, endDate) {
 
 // 更新产销率分析页面的统计数据
 async function updateProductionRatioStats(startDate, endDate) {
+    console.log('🔄 Updating production ratio stats...', { startDate, endDate });
+    
     try {
         const data = await fetchData(`/api/production/ratio-stats?start_date=${startDate}&end_date=${endDate}`);
+        console.log('📊 Production ratio stats data received:', data);
 
+        // 更新产销率分析页面的统计数据
         const productionAvgRatio = document.getElementById('production-avg-ratio');
         const productionMinRatio = document.getElementById('production-min-ratio');
         const productionMaxRatio = document.getElementById('production-max-ratio');
 
-        if (productionAvgRatio && data) {
-            productionAvgRatio.textContent = (data.avg_ratio || 0).toFixed(1) + '%';
-            if (productionMinRatio) productionMinRatio.textContent = (data.min_ratio || 0).toFixed(1) + '%';
-            if (productionMaxRatio) productionMaxRatio.textContent = (data.max_ratio || 0).toFixed(1) + '%';
-        }
+        // 检查数据是否有效并安全地更新DOM元素
+        if (data && typeof data === 'object') {
+            if (productionAvgRatio) {
+                const avgRatio = data.avg_ratio !== null && data.avg_ratio !== undefined ? data.avg_ratio : 0;
+                productionAvgRatio.textContent = avgRatio.toFixed(1) + '%';
+                productionAvgRatio.style.color = ''; // 重置颜色
+                console.log('✅ Updated avg ratio:', avgRatio.toFixed(1) + '%');
+            } else {
+                console.warn('⚠️ Element #production-avg-ratio not found');
+            }
 
-        console.log('✅ Production ratio stats updated:', data);
+            if (productionMinRatio) {
+                const minRatio = data.min_ratio !== null && data.min_ratio !== undefined ? data.min_ratio : 0;
+                productionMinRatio.textContent = minRatio.toFixed(1) + '%';
+                productionMinRatio.style.color = ''; // 重置颜色
+                console.log('✅ Updated min ratio:', minRatio.toFixed(1) + '%');
+            } else {
+                console.warn('⚠️ Element #production-min-ratio not found');
+            }
+
+            if (productionMaxRatio) {
+                const maxRatio = data.max_ratio !== null && data.max_ratio !== undefined ? data.max_ratio : 0;
+                productionMaxRatio.textContent = maxRatio.toFixed(1) + '%';
+                productionMaxRatio.style.color = ''; // 重置颜色
+                console.log('✅ Updated max ratio:', maxRatio.toFixed(1) + '%');
+            } else {
+                console.warn('⚠️ Element #production-max-ratio not found');
+            }
+
+            console.log('✅ Production ratio stats updated successfully');
+        } else {
+            console.warn('⚠️ Invalid production ratio stats data received:', data);
+            throw new Error('Invalid data format');
+        }
     } catch (error) {
         console.error('❌ Failed to update production ratio stats:', error);
+        
+        // 显示友好的错误状态，而不是 "-%"
+        const elements = [
+            { id: 'production-avg-ratio', label: '平均产销率' },
+            { id: 'production-min-ratio', label: '最低产销率' },
+            { id: 'production-max-ratio', label: '最高产销率' }
+        ];
+        
+        elements.forEach(({ id, label }) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = '--';
+                element.style.color = '#86868b';
+                element.title = `${label}数据加载失败，请稍后重试`;
+            }
+        });
+    }
+}
+
+// 更新销售情况页面的统计数据和图表
+async function updateSalesSituation(data) {
+    console.log('🔄 Updating sales situation...', data);
+    
+    try {
+        // 检查数据是否有效
+        if (!data) {
+            console.warn('⚠️ No sales situation data received');
+            return;
+        }
+
+        // 更新销售情况页面的统计数据
+        const salesTotalVolume = document.getElementById('sales-total-volume');
+        const salesAvgDaily = document.getElementById('sales-avg-daily');
+        const salesPeakDay = document.getElementById('sales-peak-day');
+
+        // 安全地更新DOM元素
+        if (salesTotalVolume) {
+            const totalVolume = (data.total_sales / 1000) || 0;
+            salesTotalVolume.textContent = totalVolume.toFixed(1) + ' 千吨';
+            console.log('✅ Updated total volume:', totalVolume.toFixed(1) + ' 千吨');
+        } else {
+            console.warn('⚠️ Element #sales-total-volume not found');
+        }
+
+        if (salesAvgDaily) {
+            const avgDaily = (data.total_sales / 1000 / (data.days || 1)) || 0;
+            salesAvgDaily.textContent = avgDaily.toFixed(1) + ' 千吨/天';
+            console.log('✅ Updated avg daily:', avgDaily.toFixed(1) + ' 千吨/天');
+        } else {
+            console.warn('⚠️ Element #sales-avg-daily not found');
+        }
+
+        if (salesPeakDay) {
+            // 估算峰值销量（平均值的1.5倍作为示例）
+            const peakDay = (data.total_sales / 1000 / (data.days || 1) * 1.5) || 0;
+            salesPeakDay.textContent = peakDay.toFixed(1) + ' 千吨';
+            console.log('✅ Updated peak day:', peakDay.toFixed(1) + ' 千吨');
+        } else {
+            console.warn('⚠️ Element #sales-peak-day not found');
+        }
+
+        // 更新销售趋势图表
+        const startDate = '2025-06-01';
+        const endDate = '2025-06-26';
+        await updateSalesTrendChart(startDate, endDate);
+
+        console.log('✅ Sales situation updated successfully');
+    } catch (error) {
+        console.error('❌ Failed to update sales situation:', error);
+        
+        // 显示错误状态
+        const elements = [
+            { id: 'sales-total-volume', suffix: ' 千吨' },
+            { id: 'sales-avg-daily', suffix: ' 千吨/天' },
+            { id: 'sales-peak-day', suffix: ' 千吨' }
+        ];
+        
+        elements.forEach(({ id, suffix }) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = '-' + suffix;
+                element.style.color = '#ff3b30';
+            }
+        });
+    }
+}
+
+// 更新销售趋势图表
+async function updateSalesTrendChart(startDate, endDate) {
+    if (!salesTrendChart) {
+        console.warn('⚠️ Sales trend chart not initialized');
+        return;
+    }
+
+    try {
+        salesTrendChart.showLoading();
+        const data = await fetchData(`/api/trends/sales-price?start_date=${startDate}&end_date=${endDate}`);
+        salesTrendChart.hideLoading();
+
+        if (!data || !Array.isArray(data)) {
+            console.warn('⚠️ No sales trend data received');
+            return;
+        }
+
+        console.log('📈 Updating sales trend chart with data:', data.length, 'items');
+
+        salesTrendChart.setOption({
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                borderColor: '#E0E0E0',
+                borderWidth: 1,
+                textStyle: {
+                    color: '#333333',
+                    fontSize: 12,
+                    fontFamily: '"Microsoft YaHei", "微软雅黑", Arial, sans-serif'
+                },
+                padding: [8, 12],
+                extraCssText: 'box-shadow: 0 4px 12px rgba(0, 91, 172, 0.15); border-radius: 6px;',
+                formatter: function(params) {
+                    const item = params[0];
+                    return `<div style="font-weight: 600; margin-bottom: 8px;">${item.axisValue}</div>
+                            <div style="display: flex; align-items: center; margin: 4px 0;">
+                                <span style="display: inline-block; width: 10px; height: 10px; background: ${item.color}; border-radius: 50%; margin-right: 8px;"></span>
+                                销售量: <strong>${item.value ? item.value.toFixed(1) : '--'} 吨</strong>
+                            </div>`;
+                }
+            },
+            grid: {
+                left: '8%',
+                right: '8%',
+                bottom: '15%',
+                top: '15%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: data.map(item => item.record_date),
+                axisLine: { lineStyle: { color: '#E0E0E0', width: 1 } },
+                axisTick: { lineStyle: { color: '#E0E0E0' } },
+                axisLabel: {
+                    color: '#666666',
+                    fontSize: 12,
+                    rotate: 45,
+                    interval: 'auto',
+                    formatter: function(value) {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '销售量 (吨)',
+                nameTextStyle: {
+                    color: '#005BAC',
+                    fontSize: 12,
+                    fontWeight: 600
+                },
+                axisLine: { show: true, lineStyle: { color: '#005BAC', width: 2 } },
+                axisTick: { lineStyle: { color: '#005BAC' } },
+                axisLabel: { color: '#666666', fontSize: 12 },
+                splitLine: { lineStyle: { color: '#F5F5F5', type: 'dashed' } }
+            },
+            series: [{
+                name: '销售量',
+                type: 'line',
+                data: data.map(item => item.total_sales),
+                lineStyle: {
+                    color: '#34c759',
+                    width: 3,
+                    shadowColor: 'rgba(52, 199, 89, 0.3)',
+                    shadowBlur: 6,
+                    shadowOffsetY: 2
+                },
+                itemStyle: {
+                    color: '#34c759',
+                    borderWidth: 3,
+                    borderColor: '#ffffff',
+                    shadowColor: 'rgba(52, 199, 89, 0.4)',
+                    shadowBlur: 8
+                },
+                symbol: 'circle',
+                symbolSize: 6,
+                smooth: true,
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(52, 199, 89, 0.3)' },
+                        { offset: 1, color: 'rgba(52, 199, 89, 0.05)' }
+                    ])
+                }
+            }]
+        });
+
+        console.log('✅ Sales trend chart updated successfully');
+    } catch (error) {
+        console.error('❌ Failed to update sales trend chart:', error);
+        if (salesTrendChart) salesTrendChart.hideLoading();
     }
 }
 
@@ -1648,8 +1871,39 @@ function showTab(tabName) {
             }, 100);
             break;
         case 'sales':
-            // 销售情况页面
-            if (salesTrendChart) updateSalesPriceChart(startDate, endDate);
+            // 销售情况页面 - 确保图表已初始化并加载数据
+            console.log('📊 Switching to sales page...');
+            setTimeout(() => {
+                // 确保销售趋势图表容器可见后再初始化
+                const chartElement = document.getElementById('sales-trend-chart');
+                if (chartElement) {
+                    console.log('🔧 Found sales trend chart element, initializing...');
+
+                    // 强制重新初始化图表
+                    if (salesTrendChart) {
+                        salesTrendChart.dispose();
+                        salesTrendChart = null;
+                    }
+
+                    salesTrendChart = echarts.init(chartElement, null, {
+                        width: 'auto',
+                        height: 400,
+                        renderer: 'canvas'
+                    });
+
+                    console.log('✅ Sales trend chart initialized');
+
+                    // 加载数据
+                    updateSalesTrendChart(startDate, endDate);
+                } else {
+                    console.warn('⚠️ Sales trend chart element not found');
+                }
+
+                // 同时更新销售价格图表（如果存在）
+                if (salesPriceChart) {
+                    updateSalesPriceChart(startDate, endDate);
+                }
+            }, 100);
             break;
         case 'inventory-turnover':
             // 库存周转页面
@@ -1707,6 +1961,8 @@ window.updateSalesPriceChart = updateSalesPriceChart;
 window.updateRatioTrendChart = updateRatioTrendChart;
 window.updateProductionRatioChart = updateProductionRatioChart;
 window.updateProductionRatioStats = updateProductionRatioStats;
+window.updateSalesSituation = updateSalesSituation;
+window.updateSalesTrendChart = updateSalesTrendChart;
 window.updateSummaryCards = updateSummaryCards;
 window.initializeCharts = initializeCharts;
 window.showTab = showTab;
