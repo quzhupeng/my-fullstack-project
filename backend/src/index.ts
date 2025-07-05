@@ -480,9 +480,10 @@ app.get('/api/production/ratio-stats', async (c) => {
     // Use centralized filtering logic
     const filterClause = ProductFilter.getCompleteFilter(false);
 
+    // 使用与实时分析页面相同的计算方式：总销售量/总产量
     const ps = c.env.DB.prepare(
       `SELECT
-        AVG((dm.sales_volume / dm.production_volume) * 100) as avg_ratio,
+        (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as avg_ratio,
         MIN((dm.sales_volume / dm.production_volume) * 100) as min_ratio,
         MAX((dm.sales_volume / dm.production_volume) * 100) as max_ratio
       FROM DailyMetrics dm
@@ -497,6 +498,70 @@ app.get('/api/production/ratio-stats', async (c) => {
 
     const data = await ps.first();
     return c.json(data);
+  } catch (e: any) {
+    return c.json({ error: 'Database query failed', details: e.message }, 500);
+  }
+});
+
+// Debug endpoint to check production ratio data
+app.get('/api/debug/ratio-data', async (c) => {
+  const { start_date, end_date } = c.req.query();
+
+  if (!start_date || !end_date) {
+    return c.json({ error: 'Missing start_date or end_date query parameters' }, 400);
+  }
+
+  try {
+    const filterClause = ProductFilter.getCompleteFilter(false);
+
+    // Get summary data
+    const summaryPs = c.env.DB.prepare(
+      `SELECT
+        SUM(dm.sales_volume) as total_sales,
+        SUM(dm.production_volume) as total_production,
+        (SUM(dm.sales_volume) / SUM(dm.production_volume)) * 100 as overall_ratio,
+        COUNT(*) as total_records
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.sales_volume IS NOT NULL
+        AND dm.production_volume IS NOT NULL
+        AND dm.sales_volume > 0
+        AND dm.production_volume > 0
+        AND ${filterClause}`
+    ).bind(start_date, end_date);
+
+    // Get daily data sample
+    const dailyPs = c.env.DB.prepare(
+      `SELECT
+        dm.record_date,
+        dm.sales_volume,
+        dm.production_volume,
+        (dm.sales_volume / dm.production_volume) * 100 as daily_ratio,
+        p.product_name
+      FROM DailyMetrics dm
+      JOIN Products p ON dm.product_id = p.product_id
+      WHERE dm.record_date BETWEEN ?1 AND ?2
+        AND dm.sales_volume IS NOT NULL
+        AND dm.production_volume IS NOT NULL
+        AND dm.sales_volume > 0
+        AND dm.production_volume > 0
+        AND ${filterClause}
+      ORDER BY (dm.sales_volume / dm.production_volume) DESC
+      LIMIT 10`
+    ).bind(start_date, end_date);
+
+    const summary = await summaryPs.first();
+    const { results: dailySample } = await dailyPs.all();
+
+    return c.json({
+      summary,
+      high_ratio_samples: dailySample,
+      calculation_explanation: {
+        overall_ratio: "总销售量 / 总产量 * 100",
+        daily_ratio: "每日销售量 / 每日产量 * 100"
+      }
+    });
   } catch (e: any) {
     return c.json({ error: 'Database query failed', details: e.message }, 500);
   }
